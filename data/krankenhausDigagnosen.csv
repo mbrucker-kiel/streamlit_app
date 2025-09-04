@@ -1,8 +1,8 @@
 Name;TIA / Schlaganfall;ACS / STEMI /NSTEMI;Reanimation;Polytrauma
-["Helios Klinikum Schleswig","HKS ZNA", "Helios Schleswig", "HKS"];True;True;True;True
+["Helios Klinikum Schleswig","HeliosSL","HKS ZNA", "Helios Schleswig", "HKS", "Helios Klinik SL", "Helios Sl", "KH Helios", "HKS ZNA SL", "Helios Klinikum SL", "Helios Klinik Schleswig", "Helios ZNA", "Helios Schleswig", "KH Schleswig"];True;True;True;True
 ["Diako Flensburg", "Diako"];True;True;True;True
-Krankenhaus Husum;True;True;True;True
-Schön Klinik Rendsburg;True;True;True;True
-["Westküstenklinikum Heide","WKK Heide"];True;True;True;True
-Imland Klinik Rendsburg;True;True;True;True
-Universitätsklinikum SH Campus Kiel;True;True;True;True 
+["Krankenhaus Husum","Klinik Husum", "KH Husum", "kkh Husum"];True;True;True;True
+["Schön Klinik Rendsburg"];True;True;True;True
+["Westküstenklinikum Heide","WKK Heide", "Heide WKK"];True;True;True;True
+["Imland Klinik Rendsburg", "Imland Klinik RD"];True;True;True;True
+["Universitätsklinikum SH Campus Kiel", "UKSH Kiel"];True;True;True;True
