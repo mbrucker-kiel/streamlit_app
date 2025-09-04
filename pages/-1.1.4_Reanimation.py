@@ -3,15 +3,60 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
-from data_loader import get_data
+from data_loader import data_loading
 import datetime
 
-st.title("1.1.3 Prähospitalintervall bei Reanimation")
+st.title("1.1.4 Prähospitalintervall bei Reanimation")
 
-st.subheader("NOCH DATENAUSWERTUNG NICHT NUR ANHAND DIAGNOSE SONDERN OB REA STATTGEFUNDEN HAT AUS NIDAPROTOKOLL?!?")
+# Load data
+df_index = data_loading(metric="Index")
+df_details = data_loading(metric="Details")
+df_rea = data_loading(metric="Reanimation", limit=5000)
 
-# Lade Daten
-df = get_data()
+# Fix duplicated columns in reanimation dataframe if they exist
+df_rea = df_rea.loc[:, ~df_rea.columns.duplicated()]
+
+# Filter reanimation data to include only True values
+df_rea_filtered = df_rea[df_rea['rea_status'] == True]
+
+st.write(f"Found {len(df_rea_filtered)} protocols with confirmed reanimation (rea_status = True)")
+
+# Display the filtered reanimation data
+st.subheader("Reanimation Data Preview")
+st.dataframe(df_rea_filtered.head(10))
+
+# Merge df_index and df_details
+if not df_details.empty:
+    # When merging, you can explicitly exclude the _id columns
+    if '_id' in df_index.columns and '_id' in df_details.columns:
+        merged_df = pd.merge(
+            df_index.drop(columns=['_id']), 
+            df_details.drop(columns=['_id']), 
+            on='protocolId', 
+            how='outer',
+            suffixes=('', '_y')  # Avoid duplicate column names
+        )
+    else:
+        merged_df = pd.merge(
+            df_index, 
+            df_details, 
+            on='protocolId', 
+            how='outer',
+            suffixes=('', '_y')  # Avoid duplicate column names
+        )
+else:
+    merged_df = df_index  # Use df_index if df_details is empty
+
+# Now merge with the filtered reanimation data
+df = pd.merge(
+    merged_df,
+    df_rea_filtered[['protocolId', 'rea_status']],
+    on='protocolId',
+    how='inner'  # Only keep protocols that exist in the filtered reanimation data
+)
+
+# Display count of protocols after merging
+st.write(f"After merging, {len(df)} protocols with reanimation data and complete details remain")
 
 # Filteroptionen innerhalb der Hauptseite in einem Expander
 with st.expander("Filteroptionen", expanded=False):
@@ -39,24 +84,7 @@ with st.expander("Filteroptionen", expanded=False):
             selected_mission_types = []
     
     with col2:
-        # Filter für Diagnosen - mit verbesserter Fehlerbehandlung
-        if 'leadingDiagnosis' in df.columns:
-            # Entferne NaN-Werte und konvertiere alle Werte zu Strings
-            diagnoses = [str(d) for d in df['leadingDiagnosis'].unique() if pd.notna(d)]
-            all_diagnoses = sorted(diagnoses)
-
-            # Finde Trauma-Diagnosen, wenn vorhanden
-            trauma_diagnoses = [d for d in all_diagnoses if ('reanimation' in d.lower() or 'herz-kreislauf-stillstand' in d.lower())]
-            default_diagnoses = trauma_diagnoses if trauma_diagnoses else all_diagnoses[:1] if all_diagnoses else []
-            
-            selected_diagnoses = st.multiselect(
-                "Diagnosen auswählen",
-                options=all_diagnoses,
-                default=default_diagnoses
-            )
-        else:
-            st.warning("Spalte 'leadingDiagnosis' nicht gefunden")
-            selected_diagnoses = []
+        st.write("Analysiere nur Einsätze mit bestätigter Reanimation (rea_status = True)")
     
     with col3:
         # Filter für Jahre - mit verbesserter Fehlerbehandlung
@@ -83,13 +111,11 @@ filtered_df = df.copy()
 # Wende Filter an
 if selected_mission_types and 'missionType' in filtered_df.columns:
     filtered_df = filtered_df[filtered_df['missionType'].isin(selected_mission_types)]
-if selected_diagnoses:
-    filtered_df = filtered_df[filtered_df['leadingDiagnosis'].isin(selected_diagnoses)]
 if selected_years and 'Jahr' in filtered_df.columns:
     filtered_df = filtered_df[filtered_df['Jahr'].isin(selected_years)]
 
 # Anzahl der Datensätze nach Filterung anzeigen
-st.write(f"Anzahl gefilterte Einsätze: {len(filtered_df)}")
+st.write(f"Anzahl gefilterte Einsätze mit Reanimation: {len(filtered_df)}")
 
 
 # Funktion zum sicheren Berechnen von Zeitintervallen
@@ -376,4 +402,4 @@ else:
         
         st.plotly_chart(fig_pie, use_container_width=True)
     else:
-        st.warning("Nicht genügend vollständige Zeitdaten für die Analyse der Prozessanteile.") 
+        st.warning("Nicht genügend vollständige Zeitdaten für die Analyse der Prozessanteile.")

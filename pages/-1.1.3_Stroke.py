@@ -3,13 +3,39 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
-from data_loader import get_data
+from data_loader import data_loading
 import datetime
 
 st.title("1.1.3 Prähospitalintervall bei akutem Stroke")
 
 # Lade Daten
-df = get_data()
+df_index = data_loading(metric="Index")
+df_details = data_loading(metric="Details")
+
+
+# Merge df_index and df_details
+if not df_details.empty:
+    # When merging, you can explicitly exclude the _id columns
+    if '_id' in df_index.columns and '_id' in df_details.columns:
+        merged_df = pd.merge(
+            df_index.drop(columns=['_id']), 
+            df_details.drop(columns=['_id']), 
+            on='protocolId', 
+            how='outer',
+            suffixes=('', '_y')  # Avoid duplicate column names
+        )
+    else:
+        merged_df = pd.merge(
+            df_index, 
+            df_details, 
+            on='protocolId', 
+            how='outer',
+            suffixes=('', '_y')  # Avoid duplicate column names
+        )
+else:
+    merged_df = df_index  # Use df_index if df_details is empty
+
+df = merged_df
 
 # Filteroptionen innerhalb der Hauptseite in einem Expander
 with st.expander("Filteroptionen", expanded=False):

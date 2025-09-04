@@ -3,15 +3,40 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
-from data_loader import get_data
+from data_loader import data_loading
 import datetime
 
 st.title("1.1.5 Prähospitalintervall bei schwerem Schädel-Hirn-Trauma")
 
-st.subheader("NOCH DATENAUSWERTUNG NICHT NUR ANHAND DIAGNOSE SONDERN OB GCS < 9 AUS NIDAPROTOKOLL?!?")
 
 # Lade Daten
-df = get_data()
+df_index = data_loading(metric="Index")
+df_details = data_loading(metric="Details")
+df_gcs = data_loading(metric="GCS")
+
+# Merge df_index and df_details
+if not df_details.empty:
+    # When merging, you can explicitly exclude the _id columns
+    if '_id' in df_index.columns and '_id' in df_details.columns:
+        merged_df = pd.merge(
+            df_index.drop(columns=['_id']), 
+            df_details.drop(columns=['_id']), 
+            on='protocolId', 
+            how='outer',
+            suffixes=('', '_y')  # Avoid duplicate column names
+        )
+    else:
+        merged_df = pd.merge(
+            df_index, 
+            df_details, 
+            on='protocolId', 
+            how='outer',
+            suffixes=('', '_y')  # Avoid duplicate column names
+        )
+else:
+    merged_df = df_index  # Use df_index if df_details is empty
+
+df = merged_df
 
 # Filteroptionen innerhalb der Hauptseite in einem Expander
 with st.expander("Filteroptionen", expanded=False):
@@ -88,9 +113,116 @@ if selected_diagnoses:
 if selected_years and 'Jahr' in filtered_df.columns:
     filtered_df = filtered_df[filtered_df['Jahr'].isin(selected_years)]
 
-# Anzahl der Datensätze nach Filterung anzeigen
-st.write(f"Anzahl gefilterte Einsätze: {len(filtered_df)}")
+# Add this after your existing filter section in the expander
+# Add this after your existing filter section in the expander
+with st.expander("GCS Filter", expanded=True):
+    st.subheader("Filter nach Glasgow Coma Scale (GCS)")
+    
+    # Check if GCS data is available
+    if df_gcs is not None and not df_gcs.empty:
+        # Fix duplicate column names in df_gcs if they exist
+        if len(df_gcs.columns) != len(set(df_gcs.columns)):
+            # Get column names and make them unique
+            cols = pd.Series(df_gcs.columns)
+            for dup in cols[cols.duplicated()].unique(): 
+                cols[cols[cols == dup].index.values.tolist()] = [f"{dup}_{i}" if i != 0 else dup 
+                                                               for i in range(sum(cols == dup))]
+            # Rename the columns with the deduplicated names
+            df_gcs.columns = cols
+        
+        # Debug info - show GCS data structure
+        with st.expander("Debug: GCS Datenstruktur", expanded=False):
+            st.write(df_gcs.head())
+            st.write(f"GCS Datensätze gesamt: {len(df_gcs)}")
+            st.write(f"Verfügbare GCS Typen: {df_gcs['type'].unique().tolist()}")
+            st.write(f"GCS Werte Verteilung:")
+            st.write(df_gcs['value_num'].value_counts().sort_index())
+        
+        # Create columns for GCS filter options
+        gcs_col1, gcs_col2 = st.columns(2)
+        
+        with gcs_col1:
+            # Radio button to select which GCS type to filter by
+            available_types = df_gcs['type'].unique().tolist()
+            default_index = 0 if 'eb_neuro' in available_types else 0
+            
+            gcs_type = st.radio(
+                "GCS Messzeitpunkt",
+                options=available_types,
+                index=default_index,
+                help="eb_neuro = Erstbefund, ue_neuro = Übergabebefund"
+            )
+        
+        with gcs_col2:
+            # Slider for GCS range
+            gcs_range = st.slider(
+                "GCS Wertebereich",
+                min_value=3,
+                max_value=15,
+                value=(3, 8),  # Default to severe TBI (GCS < 9)
+                step=1,
+                help="3-8: schweres SHT, 9-12: mittelschweres SHT, 13-15: leichtes SHT"
+            )
+        
+        # Information about the current filter
+        st.info(f"Filter aktiv: {gcs_type} GCS zwischen {gcs_range[0]} und {gcs_range[1]}")
+        
+        # Process the GCS data to filter protocols
+        if not df_gcs.empty:
+            # Ensure value_num is numeric
+            df_gcs['value_num'] = pd.to_numeric(df_gcs['value_num'], errors='coerce')
+            
+            # Determine which protocolId column to use for filtering
+            protocol_id_col = [col for col in df_gcs.columns if 'protocolId' in col][0]
+            
+            # Filter GCS data based on type and value range
+            filtered_gcs = df_gcs[
+                (df_gcs['type'] == gcs_type) & 
+                (df_gcs['value_num'] >= gcs_range[0]) & 
+                (df_gcs['value_num'] <= gcs_range[1])
+            ]
+            
+            # Debug info - show filtered GCS data
+            with st.expander("Debug: Gefilterte GCS Daten", expanded=False):
+                st.write(f"Gefundene Datensätze mit GCS {gcs_range[0]}-{gcs_range[1]} und Typ '{gcs_type}': {len(filtered_gcs)}")
+                if not filtered_gcs.empty:
+                    st.write(filtered_gcs)
+            
+            # Get list of protocolIds that match GCS criteria
+            if not filtered_gcs.empty:
+                # Use pandas.unique() function instead of Series.unique() method
+                gcs_protocol_ids = pd.unique(filtered_gcs[protocol_id_col]).tolist()
+                
+                # Debug protocolIds found
+                with st.expander("Debug: Gefundene Protocol IDs", expanded=False):
+                    st.write(f"Anzahl unique Protocol IDs: {len(gcs_protocol_ids)}")
+                    st.write(gcs_protocol_ids[:20] if len(gcs_protocol_ids) > 20 else gcs_protocol_ids)
+                
+                # Update the main filtered dataframe to include only matching protocols
+                if gcs_protocol_ids:
+                    # Count before filtering
+                    count_before = len(filtered_df)
+                    
+                    # Convert protocol IDs to the same type for comparison
+                    filtered_df['protocolId'] = filtered_df['protocolId'].astype(str)
+                    gcs_protocol_ids = [str(pid) for pid in gcs_protocol_ids]
+                    
+                    # Apply filter
+                    filtered_df = filtered_df[filtered_df['protocolId'].isin(gcs_protocol_ids)]
+                    
+                    # Report results
+                    st.write(f"Anzahl Einsätze mit GCS {gcs_range[0]}-{gcs_range[1]}: {len(filtered_df)} (von {count_before})")
+                else:
+                    st.warning(f"Keine Einsätze mit GCS {gcs_range[0]}-{gcs_range[1]} gefunden.")
+                    filtered_df = filtered_df.iloc[0:0]  # Empty dataframe but keep structure
+            else:
+                st.warning(f"Keine Einsätze mit GCS {gcs_range[0]}-{gcs_range[1]} gefunden.")
+                filtered_df = filtered_df.iloc[0:0]  # Empty dataframe but keep structure
+    else:
+        st.warning("Keine GCS-Daten verfügbar.")
 
+# Display count of filtered records (updated to include GCS filter)
+st.write(f"Anzahl gefilterte Einsätze nach allen Filtern: {len(filtered_df)}")
 
 # Funktion zum sicheren Berechnen von Zeitintervallen
 def calculate_time_diff_minutes(row, start_col, end_col):
