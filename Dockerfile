@@ -21,4 +21,4 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
 # Command to run the application
-CMD ["streamlit", "run", "sht_dashboard.py", "--server.port=8501", "--server.address=0.0.0.0"]
+CMD ["streamlit", "run", "Home.py", "--server.port=8501", "--server.address=0.0.0.0"]
