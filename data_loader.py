@@ -5,7 +5,7 @@ import datetime
 from bson import ObjectId
 
 # MongoDB connection setup
-MONGO_URL = "mongodb://root:example@192.168.100.217:27017/"
+MONGO_URL = "mongodb://root:pantomimequadrantgladiatorexternalr!epressedcro123wbardetergent@192.168.100.217:27017/"
 DATABASE_NAME = "einsatzdaten"
 
 def get_mongodb_connection():
@@ -442,7 +442,7 @@ def get_12lead_ecg(db, limit=10000):
     df = df[(df["value_1"] == "Monitoring") & (df["value_2"] == "12-Kanal-EKG")]
     
     df["metric"] = "12-Kanal-EKG"
-    df["performed"] = "Ja"  # If it's in the database, it was performed
+    df["performed"] = True  # If it's in the database, it was performed
     df["result"] = df.get("value_3")  # May contain diagnostic info
     df["timestamp"] = df.get("timeStamp")
     df["source"] = df.get("source")
@@ -743,7 +743,7 @@ LOADERS = {
     "Medikamente": get_medikamente,
     "NACA": get_metric_from_results,
     "af": get_vitals,  # Short codes for vitals
-    "bd": get_vitals,
+    # "bd": get_vitals_bd, # false implementation needs special handling since sys and dia values
     "bz": get_vitals,
     "co2": get_vitals,
     "co": get_vitals,

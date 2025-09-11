@@ -16,8 +16,7 @@ st.title("5.3 Zielklinik Stroke-Unit")
 df_krankenhaus = pd.read_csv('/home/mbrucker/streamlit_app/data/krankenhausDigagnosen.csv', sep=';')
 st.write(df_krankenhaus)
 
-# df_index = data_loading("Index")
-df_index = pd.read_csv('/home/mbrucker/streamlit_app/data/stroke_merged.csv')
+df_index = data_loading("Index")
 
 st.write(df_index)
 

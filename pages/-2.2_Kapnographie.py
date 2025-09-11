@@ -8,7 +8,17 @@ import datetime
 
 st.title("2.2 Kapnographie")
 
+df_kapnographie = data_loading("kapnometrie")
+df_inturbation = data_loading("Intubation")
 
+# df_inturbation["type"].value_counts()
+
+df.write(df_kapnographie)
+df.write(df_inturbation)
+# tuben bei denen kapno möglich ist: df_inturbation["type"] = "Endotrachealtubus", "Larynxmaske", "Larynxtubus"
+
+# für jedes protkoll mit inturbation df_inturbation["protokolId"] müssen df_kapnographie["value"] werte existieren > 0
+# -> hierbei können auch mehrere einträge in df_kapnographie pro protokolId existieren
 
 # Qualitätsziel und Rationale mit Markdown
 st.markdown("""
@@ -20,17 +30,14 @@ Die Kapnometrie / Kapnographie erlaubt u.a. die Kontrolle der intratrachealen
 Tubuslage, die Detektion einer Dislokation der Atemwegssicherung, die Steu-
 erung und Überwachung der Ventilation und unterstützt das Kreislaufmonito-
 ring.
-Die Leitlinie zum prähospitalen Atemwegsmanagement fordert: „Nach in-
-vasiver Atemwegssicherung soll bei allen Patienten obligat […] die Kapnografie
+Die Leitlinie zum prähospitalen Atemwegsmanagement fordert: „Nach invasiver Atemwegssicherung soll bei allen Patienten obligat […] die Kapnografie
 unmittelbar angewendet werden.“ Während der weiteren Versorgung und des
 Transports soll die Kapnographie kontinuierlich verwendet werden.
 Auch die S3-Leitlinie Polytrauma empfiehlt:
-* Zur Narkoseeinleitung, endotrachealen Intubation und Führung der Not-
-fallnarkose soll der Patient mittels EKG, Blutdruckmessung, Pulsoxymetrie
+* Zur Narkoseeinleitung, endotrachealen Intubation und Führung der Notfallnarkose soll der Patient mittels EKG, Blutdruckmessung, Pulsoxymetrie
 und Kapnografie überwacht werden (GoR A).
 * Die Kapnometrie/-grafie soll präklinisch und innerklinisch im Rahmen der
-endotrachealen Intubation zur Tubuslagekontrolle und danach zur Disloka-
-tions- und Beatmungskontrolle angewendet werden (GoR A).
+endotrachealen Intubation zur Tubuslagekontrolle und danach zur Dislokations- und Beatmungskontrolle angewendet werden (GoR A).
 Während Reanimation soll die Kapnographie zur Überwachung der Qualität
 der Herzdruckmassage und nach Wiedererlangung eines Spontankreislaufs zur
 Steuerung der Ventilation zum Einsatz kommen.

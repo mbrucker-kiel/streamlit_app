@@ -29,8 +29,7 @@ E5: Folgende Parameter zum neurologischen Befund
 sollen erfasst und dokumentiert werden (Empfehlungsgrad A)
 sowie
 E7: Der neurologische Befund sollte standardisiert erhoben werden. International hat sich hierfür die GCS eingebürgert. Die Limitationen der Skala (Scheinverbesserungen, Befund bei Intubation, Analgosedierung u.a.) müssen berücksichtigt werden (Empfehlungsgrad B).
-Bei Kindern < 2 Jahren ist eine Modifikation des GCS erforderlich. Alternativ
-kann die AVPU-Skala verwendet werden.""")
+Bei Kindern < 2 Jahren ist eine Modifikation des GCS erforderlich. Alternativ kann die AVPU-Skala verwendet werden.""")
 
 # Berechnungsgrundlage
 st.markdown("""

@@ -8,7 +8,24 @@ import datetime
 
 st.title("2.1 Erhebung und Überwachung der Vitalwerte")
 
+df_index = data_loading("Index")
+gcs_df = data_loading("GCS")
+bd_df = data_loading("blutdruck")
+hf_df = data_loading("herzfrequenz")
+spo2_df = data_loading("spo2")
+af_df = data_loading("atemfrequenz")
+# auch noch geburtsdatum des patienten laden
 
+st.write(df_index)
+st.write(gcs_df)
+st.write(bd_df)
+st.write(hf_df)
+st.write(spo2_df)
+st.write(af_df)
+
+st.write("was sind genau die Tracer-Diagnosen? Eckpunktepapier?")
+
+st.write("aktuell keine altersprüfung und keine prüfung nach inversiven maßnahmen")
 
 # Qualitätsziel und Rationale mit Markdown
 st.markdown("""
@@ -18,6 +35,14 @@ st.markdown("""
 ## Rationale
 Die Erhebung und Überwachung der Vitalparameter ist die Voraussetzung für eine adäquate Situationseinschätzung sowie für die Erkennung von klinischen Zustandsänderungen und Komplikationen. Ein Basismonitoring bestehend aus **EKG, nicht-invasiver Blutdruckmessung und Pulsoxymetrie** ist anerkannter notfallmedizinischer Standard. Leitlinien für typische notfallmedizinische Krankheitsbilder empfehlen explizit das Basismonitoring oder gründen Therapieentscheidungen auf den Vitalparametern. Ferner fordern die Fachinformationen zu vielen, insbesondere herzkreislaufwirksamen, potent analgetischen und sedierenden Notfallmedikamenten bei deren Anwendung eine Überwachung der Vitalparameter. Gleichzeitig werden Defizite bei der Dokumentation berichtet.
 """)
+
+# for each in df_index wo RTW-Transport
+# -> if in transport:
+# transport über protocollId versuchen mit gcs_df, bd_df hf_df spo2_df, af_df etwas zu matchen, wenn eintrag gut
+# 
+
+# einsätze mit Notarzt = where 
+
 
 # Berechnungsgrundlage
 st.markdown("""

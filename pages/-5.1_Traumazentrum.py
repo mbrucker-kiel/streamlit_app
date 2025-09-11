@@ -18,8 +18,7 @@ st.write("hier vlt auch mit leadingDiagnosis filter um neben polytrauma auch and
 df_krankenhaus = pd.read_csv('/home/mbrucker/streamlit_app/data/krankenhausDigagnosen.csv', sep=';')
 st.write(df_krankenhaus)
 
-# df_index = data_loading("Index")
-df_index = pd.read_csv('/home/mbrucker/streamlit_app/data/stroke_merged.csv')
+df_index = data_loading("Index")
 
 def check_hospital_eligibility(df_krankenhaus, df_index):
     """

@@ -8,6 +8,13 @@ import datetime
 
 st.title("2.3 Blutzucker-Messung bei Bewusstseinsminderung")
 
+bz_df = data_loading("blutzucker")
+gcs_df = data_loading("GCS")
+
+st.write(bz_df)
+st.write(gcs_df)
+# für alle transporte wo gcs_df["value_num"] < 15 vergleich mit bz_df["value"] werte vorhanden und größer 0
+# anschließend die wo gcs_df["type"] == "eb_neuro"
 
 
 # Qualitätsziel und Rationale mit Markdown
