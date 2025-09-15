@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
-from data_loader import data_loading
+from data_loading import data_loading
 import datetime
 
 st.title("2.4 12-Kanal-EKG bei V.a. Akutes Koronarsyndrom (ACS)")

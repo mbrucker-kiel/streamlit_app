@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import plotly.express as px
 import ast
-from data_loader import data_loading
+from data_loading import data_loading
 
 st.write("Prüfung ob gcs < 9 für prüfung ")
 
