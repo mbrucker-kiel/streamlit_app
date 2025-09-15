@@ -1,3 +1,4 @@
 __pycache__/
 data/stroke_merged.csv
 .env
+httpsCerts/
