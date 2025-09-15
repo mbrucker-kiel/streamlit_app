@@ -64,7 +64,7 @@ with col2:
     ### 🔄 Versionsverlauf
     
     **Version 2.0**
-    - Neuer Data Loader mit DB-Caching (10 Stunden)
+    - Neuer Data Loader mit DB-Caching (1 Woche)
     - Erweiterte Filtermöglichkeiten (Jahr, Datenmenge)
     - Zusätzliche Auswertungen (5.1 bis 5.3)
     - Einbindung Data-Loader für 2.1 bis 2.6
