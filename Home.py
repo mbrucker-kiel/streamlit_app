@@ -63,21 +63,22 @@ with col2:
     st.markdown("""
     ### 🔄 Versionsverlauf
     
-    **Version 2.0 (September 2025)**
+    **Version 2.0**
     - Neuer Data Loader mit DB-Caching (10 Stunden)
     - Erweiterte Filtermöglichkeiten (Jahr, Datenmenge)
     - Zusätzliche Auswertungen (5.1 bis 5.3)
     - Einbindung Data-Loader für 2.1 bis 2.6
     
-    **Version 1.0 (Frühjahr 2025)**
+    **Version 1.0**
     - Erstellung des Streamlit-Dashboards
     - Integration der Basisdatengrundlage
+    - Zeitauswertung 
     
     ### 🔮 Ausblick
     
     **Geplante Erweiterungen:**
     - Integration des Leitstellen-Datensatzes für *Einsatzannahme-Prozesszeiten*
-    - Vollständige Anbindung aller NIDA-Protokolldaten über den Index hinaus
+    - Entwicklung aller Qualitätsindikatoren (1.1.1 bis 5.4)
     - Erweiterung um zusätzliche Qualitätsindikatoren
     """)
 
