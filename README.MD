@@ -4,13 +4,13 @@
 
 ## Overview
 
-This project is a data analysis dashboard built with Streamlit that processes and visualizes medical data from meDV NIDA-Tablet. The system fetches data stored in MongoDB, processes it using custom data loaders, and displays the results on various Streamlit pages.
+This project is a data analysis dashboard built with Streamlit that processes and visualizes medical data from medDV NIDA-Tablet. The system fetches data stored in MongoDB, processes it using custom data loaders, and displays the results on various Streamlit pages.
 
 ## Technical Architecture
 
 ```
 ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│ meDV NIDA   │ -> │ meDV        │ -> │ MongoDB     │ -> │ Data Loader │
+│ medDV NIDA   │ -> │ medDV        │ -> │ MongoDB     │ -> │ Data Loader │
 │ Tablet Data │    │ Database    │    │ Database    │    │             │
 └─────────────┘    └─────────────┘    └─────────────┘    └──────┬──────┘
                                                                 │
@@ -22,7 +22,7 @@ This project is a data analysis dashboard built with Streamlit that processes an
 
 ## Database Schema
 
-The MongoDB database `einsatzdaten` contains the following collections (based on meDV API endpoints):
+The MongoDB database `einsatzdaten` contains the following collections (based on medDV API endpoints):
 
 ### Collections -> very different json shemata
 - `etu_leitstelle`
