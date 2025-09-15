@@ -8,13 +8,15 @@ import datetime
 
 st.title("2.2 Kapnographie")
 
-df_kapnographie = data_loading("kapnometrie")
+st.write("aktuell noch probleme mit laden der kapnographie daten, hier ist in nida was gespeichert aber in der mongoDb sind leere objekte siehe protokoll '4650'")
+
+df_kapnographie = data_loading("co2")
 df_inturbation = data_loading("Intubation")
 
 # df_inturbation["type"].value_counts()
 
-df.write(df_kapnographie)
-df.write(df_inturbation)
+st.write(df_kapnographie, limit=100000)
+st.write(df_inturbation)
 # tuben bei denen kapno möglich ist: df_inturbation["type"] = "Endotrachealtubus", "Larynxmaske", "Larynxtubus"
 
 # für jedes protkoll mit inturbation df_inturbation["protokolId"] müssen df_kapnographie["value"] werte existieren > 0

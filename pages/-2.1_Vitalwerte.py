@@ -10,10 +10,10 @@ st.title("2.1 Erhebung und Überwachung der Vitalwerte")
 
 df_index = data_loading("Index")
 gcs_df = data_loading("GCS")
-bd_df = data_loading("blutdruck")
-hf_df = data_loading("herzfrequenz")
+bd_df = data_loading("bd")
+hf_df = data_loading("hf")
 spo2_df = data_loading("spo2")
-af_df = data_loading("atemfrequenz")
+af_df = data_loading("af")
 # auch noch geburtsdatum des patienten laden
 
 st.write(df_index)

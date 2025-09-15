@@ -3,21 +3,16 @@ import pandas as pd
 from pymongo import MongoClient
 import datetime
 from bson import ObjectId
+from dotenv import load_dotenv
+import os
 
-# MongoDB connection setup
-MONGO_URL = "mongodb://root:pantomimequadrantgladiatorexternalr!epressedcro123wbardetergent@192.168.100.217:27017/"
-DATABASE_NAME = "einsatzdaten"
+from mongodb_connection import get_mongodb_connection, close_mongodb_connection
 
-def get_mongodb_connection():
-    """Establish connection to MongoDB and return the database object"""
-    client = MongoClient(MONGO_URL)
-    db = client[DATABASE_NAME]
-    return db, client
 
-def close_mongodb_connection(client):
-    """Close the MongoDB connection"""
-    if client:
-        client.close()
+load_dotenv()
+MONGO_URL = os.getenv("MONGO_URL")
+DATABASE_NAME = os.getenv("DATABASE_NAME", "einsatzdaten")
+
 
 
 # ==============================================================
@@ -267,16 +262,16 @@ def get_metric_from_results(db, limit=10000):
 
 # Flipped vitals dictionary - collection names to API shortcodes
 VITALS = {
-    "artemfrequenz": "af",
-    "blutdruck": "bd",
-    "blutzucker": "bz",
-    "kapnometrie": "co2",
-    "kohlenmonoxid": "co",  # ???? rly?
+    "af": "af",
+    "bd": "bd",
+    "bz": "bz",
+    "co2": "co2",
+    "co": "co",  # ???? rly?
     "hb": "hb",
-    "herzfrequenz": "hf",
+    "hf": "hf",
     "puls": "puls",
-    "sauerstoffsättigung": "spo2",
-    "temperatur": "temp",
+    "spo2": "spo2",
+    "temp": "temp",
 }
 
 def get_vitals(db, vital, limit=10000):
@@ -826,7 +821,56 @@ def get_data_for_protocols(metric, protocol_ids, limit=10000, med_name=None):
     finally:
         close_mongodb_connection(client)
 
-def data_loading(metric, limit=10000, med_name=None, year_filter=None):
+
+
+@st.cache_data(ttl=3600, show_spinner="Loading data...")  # Cache for 1 hour
+def cached_db_query(metric: str, limit: int = 10000, med_name: Optional[str] = None, 
+                   protocol_ids: Optional[List[str]] = None):
+    """
+    Cached database query function that handles the actual data retrieval
+    
+    Parameters:
+    - metric: The type of data to load
+    - limit: Maximum number of records to return
+    - med_name: Optional name of medication to filter by
+    - protocol_ids: Optional list of protocol IDs to filter by
+    
+    Returns:
+    - DataFrame containing the requested data
+    """
+    db, client = get_mongodb_connection()
+    try:
+        if metric not in LOADERS:
+            raise ValueError(f"Unknown metric: {metric}")
+
+        # Handle different metric types
+        if metric in ["GCS", "Schmerzen"]:
+            df = LOADERS[metric](db, metric=metric, limit=limit)
+        elif metric in ["af", "bd", "bz", "co2", "co", "hb", "hf", "puls", "spo2", "temp"]:
+            # For vitals, pass the shortcode directly
+            df = LOADERS[metric](db, vital=metric, limit=limit)
+        elif metric == "Medikamente" and med_name:
+            # For medications with specific name filter
+            df = LOADERS[metric](db, med_name=med_name, limit=limit)
+        elif protocol_ids:
+            # When we have specific protocol IDs to filter by
+            df = get_data_for_protocols(metric, protocol_ids, limit, med_name)
+        else:
+            df = LOADERS[metric](db, limit=limit)
+
+        # Remove duplicate columns
+        df = df.loc[:, ~df.columns.duplicated()]
+        return df
+    finally:
+        close_mongodb_connection(client)
+
+@st.cache_data(ttl=3600, show_spinner="Filtering data by year...")
+def cached_year_filter(start_year: int, end_year: int, limit: int = 10000):
+    """Cached function to filter data by year range"""
+    return filter_data_by_year(start_year, end_year, limit)
+
+def data_loading(metric: str, limit: int = 10000, med_name: Optional[str] = None, 
+                year_filter: Optional[Tuple[int, int]] = None):
     """
     Generic function to load a metric into a dataframe
     
@@ -836,51 +880,17 @@ def data_loading(metric, limit=10000, med_name=None, year_filter=None):
     - med_name: Optional name of medication to filter by (only used with 'Medikamente' metric)
     - year_filter: Optional tuple (start_year, end_year) to filter by mission date
     """
-    cache_key = f"df_{metric}_{limit}"
-    if med_name:
-        cache_key += f"_{med_name}"
-    if year_filter:
-        cache_key += f"_{year_filter[0]}_{year_filter[1]}"
-        
-    if cache_key in st.session_state:
-        return st.session_state[cache_key]
-
     # If year filter is provided, get the protocol IDs for that year range
     if year_filter:
         start_year, end_year = year_filter
-        _, protocol_ids = filter_data_by_year(start_year, end_year, limit)
+        _, protocol_ids = cached_year_filter(start_year, end_year, limit)
         
         if not protocol_ids:
             # Return empty DataFrame if no protocols found for the year range
-            empty_df = pd.DataFrame()
-            st.session_state[cache_key] = empty_df
-            return empty_df
+            return pd.DataFrame()
             
         # Get data for the filtered protocol IDs
-        df = get_data_for_protocols(metric, protocol_ids, limit, med_name)
-        st.session_state[cache_key] = df
-        return df
+        return cached_db_query(metric, limit, med_name, protocol_ids)
     
     # If no year filter, proceed with normal data loading
-    db, client = get_mongodb_connection()
-    try:
-        if metric not in LOADERS:
-            raise ValueError(f"Unknown metric: {metric}")
-
-        if metric in ["GCS", "Schmerzen"]:
-            df = LOADERS[metric](db, metric=metric, limit=limit)
-        elif metric in ["af", "bd", "bz", "co2", "co", "hb", "hf", "puls", "spo2", "temp"]:
-            # For vitals, pass the shortcode directly
-            df = LOADERS[metric](db, vital=metric, limit=limit)
-        elif metric == "Medikamente" and med_name:
-            # For medications with specific name filter
-            df = LOADERS[metric](db, med_name=med_name, limit=limit)
-        else:
-            df = LOADERS[metric](db, limit=limit)
-
-        df = df.loc[:, ~df.columns.duplicated()]
-
-        st.session_state[cache_key] = df
-        return df
-    finally:
-        close_mongodb_connection(client)
+    return cached_db_query(metric, limit, med_name)
