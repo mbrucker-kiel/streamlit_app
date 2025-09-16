@@ -8,6 +8,28 @@ import datetime
 
 st.title("2.2 Kapnographie")
 
+import streamlit_authenticator as stauth
+import yaml
+from yaml.loader import SafeLoader
+
+# Load configuration
+with open('config.yaml') as file:
+    config = yaml.load(file, Loader=SafeLoader)
+
+# Pre-hashing all plain text passwords once
+stauth.Hasher.hash_passwords(config['credentials'])
+
+authenticator = stauth.Authenticate(
+    config['credentials'],
+    config['cookie']['name'],
+    config['cookie']['key'],
+    config['cookie']['expiry_days']
+)
+try:
+    authenticator.login()
+except Exception as e:
+    st.error(e)
+
 st.write("aktuell noch probleme mit laden der kapnographie daten, hier ist in nida was gespeichert aber in der mongoDb sind leere objekte siehe protokoll '4650'")
 
 df_kapnographie = data_loading("co2")

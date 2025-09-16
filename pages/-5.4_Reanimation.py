@@ -6,10 +6,35 @@ import seaborn as sns
 import plotly.express as px
 from data_loading import data_loading
 
-st.set_page_config(layout="wide", page_title="Polytrauma Analysis Dashboard")
-
 # Title and description
 st.title("5.4  Zielklinik Z.n. Reanimation")
+
+import streamlit_authenticator as stauth
+import yaml
+from yaml.loader import SafeLoader
+
+# Load configuration
+with open('config.yaml') as file:
+    config = yaml.load(file, Loader=SafeLoader)
+
+# Pre-hashing all plain text passwords once
+stauth.Hasher.hash_passwords(config['credentials'])
+
+authenticator = stauth.Authenticate(
+    config['credentials'],
+    config['cookie']['name'],
+    config['cookie']['key'],
+    config['cookie']['expiry_days']
+)
+try:
+    authenticator.login()
+except Exception as e:
+    st.error(e)
+
+df_krankenhaus = pd.read_csv('data/krankenhausDigagnosen.csv', sep=';')
+st.write(df_krankenhaus)
+df_reanimation = data_loading("Reanimation")
+st.write(df_reanimation)
 
 # Qualitätsziel und Rationale mit Markdown
 st.markdown("""

@@ -3,3 +3,5 @@ pandas
 plotly
 pymongo
 dotenv
+streamlit_authenticator
+yaml

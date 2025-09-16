@@ -1,5 +1,5 @@
 import pandas as pd
-
+from data_helpers import ja_nein_to_bool
 
 def get_metric_from_results(db, limit=10000):
     """Load NACA score from protocols_results"""

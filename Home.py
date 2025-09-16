@@ -1,11 +1,20 @@
 import streamlit as st
 
-# Page configuration
-st.set_page_config(
-    page_title="Qualitätskriterien Dashboard",
-    page_icon="🚑",
-    layout="wide"
-)
+import streamlit_authenticator as stauth
+import yaml
+from yaml.loader import SafeLoader
+from auth import check_authentication, logout
+
+# Load configuration
+with open('config.yaml') as file:
+    config = yaml.load(file, Loader=SafeLoader)
+
+if check_authentication():
+    # Logout-Button in der Sidebar anzeigen
+    logout()
+    
+    # Begrüßung anzeigen
+    st.sidebar.write(f'Willkommen *{st.session_state["name"]}*')
 
 # Title and introduction
 st.title("🚑 Qualitätskriterien Dashboard")
@@ -95,3 +104,4 @@ Das Dashboard wird kontinuierlich weiterentwickelt – Feedback und Anregungen s
 
 *Stand: September 2025*
 """)
+

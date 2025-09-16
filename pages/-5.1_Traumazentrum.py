@@ -9,13 +9,35 @@ from data_loading import data_loading
 
 st.write("Prüfung ob gcs < 9 für prüfung ")
 
+import streamlit_authenticator as stauth
+import yaml
+from yaml.loader import SafeLoader
+
+# Load configuration
+with open('config.yaml') as file:
+    config = yaml.load(file, Loader=SafeLoader)
+
+# Pre-hashing all plain text passwords once
+stauth.Hasher.hash_passwords(config['credentials'])
+
+authenticator = stauth.Authenticate(
+    config['credentials'],
+    config['cookie']['name'],
+    config['cookie']['key'],
+    config['cookie']['expiry_days']
+)
+try:
+    authenticator.login()
+except Exception as e:
+    st.error(e)
+
 # Title and description
 st.title("5.1 Zielklinik geeignetes Traumazentrum")
 
 st.write("hier vlt auch mit leadingDiagnosis filter um neben polytrauma auch andere Diagnosen zu betrachten")
 
 # Load data
-df_krankenhaus = pd.read_csv('/home/mbrucker/streamlit_app/data/krankenhausDigagnosen.csv', sep=';')
+df_krankenhaus = pd.read_csv('data/krankenhausDigagnosen.csv', sep=';')
 st.write(df_krankenhaus)
 
 df_index = data_loading("Index")
