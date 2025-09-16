@@ -6,7 +6,7 @@ from db_connection import get_mongodb_connection, close_mongodb_connection
 from loaders import LOADERS
 from data_filtering import filter_data_by_year, get_data_for_protocols
 
-@st.cache_data(ttl=36000, show_spinner="Filtering data by year...")
+@st.cache_data(ttl=604800, show_spinner="Filtering data by year...")
 def cached_year_filter(start_year: int, end_year: int, limit: int = 10000):
     """Cached function to filter data by year range"""
     return filter_data_by_year(start_year, end_year, limit)

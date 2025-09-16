@@ -5,3 +5,4 @@ pymongo
 dotenv
 streamlit_authenticator
 yaml
+matplotlib
