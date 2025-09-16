@@ -6,3 +6,4 @@ dotenv
 streamlit_authenticator
 yaml
 matplotlib
+seaborn
