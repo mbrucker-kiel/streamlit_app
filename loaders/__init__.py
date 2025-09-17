@@ -1,7 +1,7 @@
 from .index_loaders import get_index, get_details
 from .findings_loaders import get_metric_from_findings, get_neurological_signs, get_pupil_status
 from .measures_loaders import get_medikamente, get_intubation, get_12lead_ecg
-from .results_loaders import get_metric_from_results, get_reanimation, get_symptom_onset
+from .results_loaders import get_metric_from_results, get_reanimation, get_reanimation_with_targetDestination, get_symptom_onset
 from .vitals_loaders import get_vitals
 
 # Registry
@@ -24,6 +24,7 @@ LOADERS = {
     "temp": get_vitals,
     "Intubation": get_intubation,
     "Reanimation": get_reanimation,
+    "Reanimation_mit_targetDestination": get_reanimation_with_targetDestination,
     "12-Kanal-EKG": get_12lead_ecg,
     "Symptombeginn": get_symptom_onset,
     "Neurologische_Auffälligkeiten": get_neurological_signs,

@@ -1,5 +1,6 @@
 import pandas as pd
 from data_helpers import ja_nein_to_bool
+import data_loading
 
 def get_metric_from_results(db, limit=10000):
     """Load NACA score from protocols_results"""
@@ -232,3 +233,102 @@ def get_reanimation(db, limit=10000):
 
     keep = ["protocolId", "metric", "rea_status", "source_metric", "timestamp", "source", "collection"]
     return df[keep]
+
+
+
+def get_reanimation_with_targetDestination(db, limit=10000):
+    """
+    Load reanimation data and merge with index data to get target destination
+    Only returns cases where reanimation was performed (rea_status = True)
+    Handles duplicate protocol IDs by keeping only the most recent entry
+    """
+    # Get reanimation data
+    df_rea = get_reanimation(db, limit=limit)
+    
+    if df_rea.empty:
+        # Return empty DataFrame with expected columns if no reanimation data
+        return pd.DataFrame(columns=["protocolId", "metric", "rea_status", "source_metric", 
+                                     "timestamp", "source", "collection", "targetDestination"])
+    
+    # Filter to only keep positive reanimation cases
+    df_rea = df_rea[df_rea['rea_status'] == True]
+    
+    # Check for any NaN values in protocolId and drop them
+    if df_rea['protocolId'].isna().any():
+        df_rea = df_rea.dropna(subset=['protocolId'])
+    
+    # Ensure protocolId is a string type for consistent comparison
+    df_rea['protocolId'] = df_rea['protocolId'].astype(str)
+    
+    # Handle duplicate protocol IDs - keep the most recent entry
+    if 'timestamp' in df_rea.columns and not df_rea['timestamp'].isna().all():
+        # Sort by timestamp (descending) and keep first occurrence of each protocolId
+        df_rea = df_rea.sort_values('timestamp', ascending=False)
+        df_rea = df_rea.drop_duplicates(subset=['protocolId'], keep='first')
+    else:
+        # If no timestamp, just keep the first occurrence
+        df_rea = df_rea.drop_duplicates(subset=['protocolId'], keep='first')
+    
+    # Reset index to ensure clean indexing
+    df_rea = df_rea.reset_index(drop=True)
+    
+    # Final check for duplicates
+    if df_rea['protocolId'].duplicated().any():
+        # If still duplicated, force uniqueness
+        df_rea = df_rea.groupby('protocolId', as_index=False).first()
+    
+    # If no positive reanimation cases remain, return empty DataFrame
+    if df_rea.empty:
+        return pd.DataFrame(columns=["protocolId", "metric", "rea_status", "source_metric", 
+                                     "timestamp", "source", "collection", "targetDestination"])
+    
+    # Import directly in function to avoid circular imports
+    from data_loading import data_loading
+    
+    # Get index data which contains target destination
+    df_index = data_loading("Index")
+    
+    if df_index.empty:
+        # If no index data, just add empty targetDestination column
+        df_rea["targetDestination"] = None
+        keep = ["protocolId", "metric", "rea_status", "source_metric", "timestamp", 
+                "source", "collection", "targetDestination"]
+        return df_rea[keep]
+    
+    # Ensure protocolId is a string type in index data
+    df_index['protocolId'] = df_index['protocolId'].astype(str)
+    
+    # Drop any NaN values in protocolId
+    if df_index['protocolId'].isna().any():
+        df_index = df_index.dropna(subset=['protocolId'])
+    
+    # Handle duplicate protocol IDs in index data if they exist
+    if df_index['protocolId'].duplicated().any():
+        df_index = df_index.drop_duplicates(subset=['protocolId'], keep='first')
+    
+    # Reset index in index data
+    df_index = df_index.reset_index(drop=True)
+    
+    # Perform the merge using a more controlled approach
+    # First, extract only the needed columns from df_index
+    df_index_subset = df_index[["protocolId", "targetDestination"]].copy()
+    
+    # Merge reanimation data with index data on protocolId
+    df_merged = pd.merge(
+        df_rea,
+        df_index_subset,
+        on="protocolId",
+        how="left",
+        validate="1:1"  # Ensures a one-to-one merge
+    )
+    
+    # Select required columns
+    keep = ["protocolId", "metric", "rea_status", "source_metric", "timestamp", 
+            "source", "collection", "targetDestination"]
+    
+    # Ensure all required columns exist
+    for col in keep:
+        if col not in df_merged.columns:
+            df_merged[col] = None
+    
+    return df_merged[keep]

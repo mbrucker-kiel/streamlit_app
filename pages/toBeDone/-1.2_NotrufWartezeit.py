@@ -1,28 +1,20 @@
 import streamlit as st
+from auth import check_authentication, logout
+
+# Authentication check
+if not check_authentication():
+    st.warning("Bitte melden Sie sich an, um auf diese Seite zuzugreifen.")
+    st.stop()
 
 st.title("1.2 Notruf-Wartezeit")
 
-import streamlit_authenticator as stauth
-import yaml
-from yaml.loader import SafeLoader
+# Logout-Button in der Sidebar anzeigen
+logout()
 
-# Load configuration
-with open('config.yaml') as file:
-    config = yaml.load(file, Loader=SafeLoader)
+# Begrüßung anzeigen
+st.sidebar.write(f'Willkommen *{st.session_state["name"]}*')
 
-# Pre-hashing all plain text passwords once
-stauth.Hasher.hash_passwords(config['credentials'])
-
-authenticator = stauth.Authenticate(
-    config['credentials'],
-    config['cookie']['name'],
-    config['cookie']['key'],
-    config['cookie']['expiry_days']
-)
-try:
-    authenticator.login()
-except Exception as e:
-    st.error(e)
+# Now show content after authentication
 
 st.write("Indikator Zeitintervall zwischen Aufschalten des Notrufs und Notrufannahme in der Leitstelle")
 

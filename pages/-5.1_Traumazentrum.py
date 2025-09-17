@@ -6,35 +6,24 @@ import seaborn as sns
 import plotly.express as px
 import ast
 from data_loading import data_loading
+from auth import check_authentication, logout
 
-st.write("Prüfung ob gcs < 9 für prüfung ")
+# Authentication check
+if not check_authentication():
+    st.warning("Bitte melden Sie sich an, um auf diese Seite zuzugreifen.")
+    st.stop()
 
-import streamlit_authenticator as stauth
-import yaml
-from yaml.loader import SafeLoader
+# Logout-Button in der Sidebar anzeigen
+logout()
 
-# Load configuration
-with open('config.yaml') as file:
-    config = yaml.load(file, Loader=SafeLoader)
+# Begrüßung anzeigen
+st.sidebar.write(f'Willkommen *{st.session_state["name"]}*')
 
-# Pre-hashing all plain text passwords once
-stauth.Hasher.hash_passwords(config['credentials'])
-
-authenticator = stauth.Authenticate(
-    config['credentials'],
-    config['cookie']['name'],
-    config['cookie']['key'],
-    config['cookie']['expiry_days']
-)
-try:
-    authenticator.login()
-except Exception as e:
-    st.error(e)
+# Now load data after authentication
 
 # Title and description
 st.title("5.1 Zielklinik geeignetes Traumazentrum")
 
-st.write("hier vlt auch mit leadingDiagnosis filter um neben polytrauma auch andere Diagnosen zu betrachten")
 
 # Load data
 df_krankenhaus = pd.read_csv('data/krankenhausDigagnosen.csv', sep=';')
@@ -111,59 +100,11 @@ def check_hospital_eligibility(df_krankenhaus, df_index):
         axis=1
     )
     
-    # Display results
-    st.subheader("Hospital Eligibility Results")
-    display_cols = ['protocolId', 'targetDestination', 'leadingDiagnosis', 'hospital_eligible']
-    st.dataframe(df_index[display_cols])
-    
     return df_index
 
 # Perform eligibility check
 df_checked = check_hospital_eligibility(df_krankenhaus, df_index)
 
-# Analyze polytrauma cases
-st.header("Polytrauma Case Analysis")
-
-# Filter for polytrauma cases (handle NaN values safely)
-df_trauma = df_checked.copy()
-df_trauma['leadingDiagnosis'] = df_trauma['leadingDiagnosis'].fillna('')
-trauma_mask = df_trauma['leadingDiagnosis'].str.lower().str.contains('polytrauma|schwerverletzt')
-trauma_cases = df_trauma[trauma_mask].copy()
-
-# Display basic count
-trauma_count = len(trauma_cases)
-st.write(f"Total polytrauma cases: {trauma_count}")
-
-if trauma_count > 0:
-    # Calculate key metrics
-    eligible_count = trauma_cases['hospital_eligible'].sum()
-    percentage = (eligible_count / trauma_count * 100) if trauma_count > 0 else 0
-    
-    # Create metrics display
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Total Polytrauma Cases", f"{trauma_count}")
-    col2.metric("Appropriate Trauma Center", f"{eligible_count}")
-    col3.metric("Percentage", f"{percentage:.1f}%")
-    
-    # Display filtered cases
-    st.subheader("Polytrauma Transport Details")
-    st.dataframe(trauma_cases[['protocolId', 'targetDestination', 'leadingDiagnosis', 'hospital_eligible']])
-    
-    # Create visualization
-    fig, ax = plt.subplots(figsize=(10, 6))
-    labels = ['Appropriate Trauma Center', 'Inappropriate Trauma Center']
-    sizes = [eligible_count, trauma_count - eligible_count]
-    colors = ['#4CAF50', '#F44336']
-    explode = (0.1, 0) if eligible_count > 0 else (0, 0.1)
-    
-    ax.pie(sizes, explode=explode, labels=labels, colors=colors, autopct='%1.1f%%',
-           shadow=True, startangle=90)
-    ax.axis('equal')
-    ax.set_title('Appropriateness of Trauma Center Selection')
-    
-    st.pyplot(fig)
-
-   
 # Qualitätsziel und Rationale mit Markdown
 st.markdown("""
 ## Qualitätsziel
@@ -196,34 +137,68 @@ und Schockraum-Indikation, die in eine Klinik transportiert werden unter Ausschl
 * Penetrierendes Thorax- oder Abdominaltrauma (ja vs. nein)         
 """)
 
-# Zusätzliche Auswertungen
-st.header("Zusätzliche Auswertungen")
+# Analyze polytrauma cases
+st.header("Analyse der Polytrauma-Fälle")
 
-# Filter für Primäreinsätze
-if 'statisticMissionType' in df_checked.columns:
-    primary_missions = df_checked['statisticMissionType'].fillna('').str.contains('Primär')
-    primary_count = primary_missions.sum()
-    st.write(f"Anzahl Primäreinsätze: {primary_count}")
+# Filter for polytrauma cases (handle NaN values safely)
+df_trauma = df_checked.copy()
+df_trauma['leadingDiagnosis'] = df_trauma['leadingDiagnosis'].fillna('')
+trauma_mask = df_trauma['leadingDiagnosis'].str.lower().str.contains('polytrauma|schwerverletzt')
+trauma_cases = df_trauma[trauma_mask].copy()
 
-# Zusammenfassung und Empfehlungen
-st.header("Zusammenfassung und Empfehlungen")
 
+   
+
+import plotly.graph_objects as go  # Add this import at the top if not present
+trauma_count = len(trauma_cases)
 if trauma_count > 0:
-    if percentage < 80:
-        st.error(f"""
-        **Verbesserungspotential identifiziert:** Nur {percentage:.1f}% der Polytrauma-Patienten werden in ein geeignetes Traumazentrum transportiert.
-        
-        **Empfehlungen:**
-        1. Schulung des Rettungsdienstpersonals zur Identifikation von Polytrauma-Patienten
-        2. Klare Richtlinien zur Auswahl des geeigneten Traumazentrums
-        3. Regelmäßige Überprüfung der Transportziele bei Polytrauma-Patienten
-        """)
-    else:
-        st.success(f"""
-        **Gute Qualität:** {percentage:.1f}% der Polytrauma-Patienten werden in ein geeignetes Traumazentrum transportiert.
-        
-        **Empfehlungen zur weiteren Verbesserung:**
-        1. Fortsetzung der bestehenden Praxis
-        2. Regelmäßige Überprüfung der Transportziele
-        """)
+    # Calculate key metrics
+    eligible_count = trauma_cases['hospital_eligible'].sum()
+    percentage = (eligible_count / trauma_count * 100) if trauma_count > 0 else 0
+    
+    # Create metrics display
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Anzahl Polytrauma-Fälle", f"{trauma_count}")
+    col2.metric("Geeignetes Traumazentrum", f"{eligible_count}")
+    col3.metric(
+        label="Anteil der Polytrauma-Patienten mit geeignetem Traumazentrum",
+        value=f"{percentage:.1f}%",
+        delta=f"{percentage - 100:.1f}%" if percentage < 100 else "Ziel erreicht"
+    )
 
+    # Calculate key metrics
+    eligible_count = trauma_cases['hospital_eligible'].sum()
+    percentage = (eligible_count / trauma_count * 100) if trauma_count > 0 else 0
+
+  
+    # Visualisierung des Gesamtergebnisses als Gauge
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=percentage,
+        domain={'x': [0, 1], 'y': [0, 1]},
+        title={'text': "Erfüllungsgrad des Qualitätsziels"},
+        gauge={
+            'axis': {'range': [0, 100]},
+            'bar': {'color': "darkblue"},
+            'steps': [
+                {'range': [0, 50], 'color': "red"},
+                {'range': [50, 80], 'color': "orange"},
+                {'range': [80, 95], 'color': "yellow"},
+                {'range': [95, 100], 'color': "green"}
+            ],
+            'threshold': {
+                'line': {'color': "red", 'width': 4},
+                'thickness': 0.75,
+                'value': 100
+            }
+        }
+    ))
+    st.plotly_chart(fig)
+
+    # Display filtered cases
+    st.subheader("Polytrauma Transport Details")
+    trauma_cases_sorted = trauma_cases.sort_values(by='hospital_eligible')
+    st.dataframe(trauma_cases_sorted[['protocolId', 'targetDestination', 'leadingDiagnosis', 'hospital_eligible']])
+
+st.write("Todos: Stratifizierung: Prüfung ob gcs < 9 für prüfung & Penetrierendes Thorax- oder Abdominaltrauma")
+st.write("hier vlt auch mit leadingDiagnosis filter um neben polytrauma auch andere Diagnosen zu betrachten")

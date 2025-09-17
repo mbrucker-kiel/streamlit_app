@@ -16,7 +16,7 @@ def check_authentication():
         else:
             st.error("Konfigurationsdatei nicht gefunden. Bitte führen Sie zuerst auth_config.py aus.")
             st.stop()
-            
+
         # Erstelle Authentifizierungsobjekt
         authenticator = stauth.Authenticate(
             config['credentials'],
@@ -24,10 +24,43 @@ def check_authentication():
             config['cookie']['key'],
             config['cookie']['expiry_days'],
         )
-        
-        # Zeige Login-Widget
-        name, authentication_status, username = authenticator.login('main')
-        
+
+# Hilfsfunktion zum Überprüfen des Authentifizierungsstatus
+def check_authentication():
+    """Überprüft, ob der Benutzer authentifiziert ist und leitet ggf. zur Anmeldeseite weiter"""
+    # Prüfen, ob der Authentifizierungsstatus bereits im Session State ist
+    if 'authentication_status' not in st.session_state or not st.session_state['authentication_status']:
+        # Lade Konfiguration
+        if os.path.exists('config.yaml'):
+            with open('config.yaml') as file:
+                config = yaml.load(file, Loader=SafeLoader)
+        else:
+            st.error("Konfigurationsdatei nicht gefunden. Bitte führen Sie zuerst auth_config.py aus.")
+            st.stop()
+
+        # Erstelle Authentifizierungsobjekt
+        authenticator = stauth.Authenticate(
+            config['credentials'],
+            config['cookie']['name'],
+            config['cookie']['key'],
+            config['cookie']['expiry_days'],
+        )
+
+        # Zeige Login-Widget und prüfe das Ergebnis
+        login_result = authenticator.login()
+
+        # Prüfe, ob das Ergebnis None ist (kann bei Konfigurationsfehlern passieren)
+        if login_result is None:
+            st.error("Authentifizierungsfehler: Überprüfen Sie die config.yaml Datei und stellen Sie sicher, dass die Passwörter gehasht sind.")
+            st.stop()
+
+        # Entpacke das Ergebnis sicher
+        try:
+            name, authentication_status, username = login_result
+        except (TypeError, ValueError) as e:
+            st.error(f"Authentifizierungsfehler: {str(e)}")
+            st.stop()
+
         # Speichere Authentifizierungsstatus im Session State
         st.session_state['authentication_status'] = authentication_status
         if authentication_status:
@@ -38,11 +71,13 @@ def check_authentication():
             return True
         elif authentication_status == False:
             st.error('Benutzername/Passwort ist falsch')
-            st.stop()
+            return False
         else:
             st.warning('Bitte geben Sie Ihren Benutzernamen und Ihr Passwort ein')
-            st.stop()
-    
+            return False
+
+    return st.session_state['authentication_status']
+
     return st.session_state['authentication_status']
 
 # Hilfsfunktion für Logout
