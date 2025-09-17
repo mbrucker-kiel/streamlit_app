@@ -51,7 +51,6 @@ def check_authentication():
 
         # Prüfe, ob das Ergebnis None ist (kann bei Konfigurationsfehlern passieren)
         if login_result is None:
-            st.error("Authentifizierungsfehler: Überprüfen Sie die config.yaml Datei und stellen Sie sicher, dass die Passwörter gehasht sind.")
             st.stop()
 
         # Entpacke das Ergebnis sicher
