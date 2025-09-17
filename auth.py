@@ -11,7 +11,7 @@ def check_authentication():
     if 'authentication_status' not in st.session_state or not st.session_state['authentication_status']:
         # Lade Konfiguration
         if os.path.exists('config.yaml'):
-            with open('config.yaml') as file:
+            with open('config.yaml', encoding='utf-8') as file:
                 config = yaml.load(file, Loader=SafeLoader)
         else:
             st.error("Konfigurationsdatei nicht gefunden. Bitte führen Sie zuerst auth_config.py aus.")
@@ -32,7 +32,7 @@ def check_authentication():
     if 'authentication_status' not in st.session_state or not st.session_state['authentication_status']:
         # Lade Konfiguration
         if os.path.exists('config.yaml'):
-            with open('config.yaml') as file:
+            with open('config.yaml', encoding='utf-8') as file:
                 config = yaml.load(file, Loader=SafeLoader)
         else:
             st.error("Konfigurationsdatei nicht gefunden. Bitte führen Sie zuerst auth_config.py aus.")
@@ -74,8 +74,6 @@ def check_authentication():
         else:
             st.warning('Bitte geben Sie Ihren Benutzernamen und Ihr Passwort ein')
             return False
-
-    return st.session_state['authentication_status']
 
     return st.session_state['authentication_status']
 
