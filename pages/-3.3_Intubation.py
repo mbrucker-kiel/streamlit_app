@@ -69,3 +69,7 @@ df_inturbation = data_loading("Intubation")
 df_medikamente = data_loading("Medikamente")
 st.write(df_inturbation)
 st.write(df_medikamente)
+
+
+# medikamente für Notnakose
+meds = [Propofol, Midazolam, Trapanal, S-Ketamin, Fentanyl, Rocuronium, Succinycholin]
