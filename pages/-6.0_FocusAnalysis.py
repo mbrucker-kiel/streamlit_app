@@ -15,7 +15,6 @@ if not check_authentication():
 st.title("Schwerpunktanalyse")
 
 st.markdown("""
-
 Aufgrund wiederkehrender Anfragen ist aufgefallen, dass die Adresse häufig als Einsatz ohne Transportindikation auftaucht.  
 Mithilfe dieser Auswertung sollen tiefere Einblicke in die Daten gewonnen werden, um mögliche Ursachen zu identifizieren.  
 

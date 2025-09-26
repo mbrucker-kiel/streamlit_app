@@ -75,7 +75,12 @@ if check_authentication():
     with col2:
         st.markdown("""
         ### 🔄 Versionsverlauf
-        
+        **Version 2.1**
+        - Hotspot-Analyse 6.0
+        - Data Helper: KTW Indikationsprüfung 
+        - Data Loader: freetext, ETÜ
+        - Merging von NIDA-Protokollen und ETÜ Daten            
+                    
         **Version 2.0**
         - Neuer Data Loader mit DB-Caching (1 Woche)
         - Erweiterte Filtermöglichkeiten (Jahr, Datenmenge)
