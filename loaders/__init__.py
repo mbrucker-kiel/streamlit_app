@@ -1,4 +1,4 @@
-from .index_loaders import get_index, get_details
+from .index_loaders import get_index, get_details, get_freetext, get_etu
 from .findings_loaders import get_metric_from_findings, get_neurological_signs, get_pupil_status
 from .measures_loaders import get_medikamente, get_intubation, get_12lead_ecg
 from .results_loaders import get_metric_from_results, get_reanimation, get_reanimation_with_targetDestination, get_symptom_onset
@@ -8,6 +8,7 @@ from .vitals_loaders import get_vitals
 LOADERS = {
     "Index": get_index,
     "Details": get_details,
+    "Freetext": get_freetext,
     "GCS": get_metric_from_findings,
     "Schmerzen": get_metric_from_findings,
     "Medikamente": get_medikamente,
@@ -29,4 +30,5 @@ LOADERS = {
     "Symptombeginn": get_symptom_onset,
     "Neurologische_Auffälligkeiten": get_neurological_signs,
     "Pupillenstatus": get_pupil_status,
+    "ETÜ": get_etu,
 }

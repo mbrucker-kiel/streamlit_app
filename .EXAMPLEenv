@@ -1,2 +1,7 @@
+# MongoDB URL und MongoDB Databasename
 MONGO_URL =
 DATABASE_NAME = 
+
+# NIDA Protokoll URLs für Home.py
+NIDA_PROTOCOL_BASE_URL=""
+NIDA_PROTOCOL_EXAMPLE_URL=""

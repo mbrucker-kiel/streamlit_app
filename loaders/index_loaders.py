@@ -25,7 +25,7 @@ def get_index(db, filters=None, limit=10000):
         query['protocolId'] = {'$in': filters['protocol_ids']}
     
     # Query the database
-    docs = list(db.nida_index.find(query, limit=limit))
+    docs = list(db.nida_index.find(query).sort("missionDate", -1).limit(limit))
     
     # Convert ObjectId to string
     docs = convert_objectid_to_str(docs)
@@ -63,3 +63,51 @@ def get_details(db, filters=None, limit=10000):
     df = process_boolean_fields(df)
     
     return df
+
+
+def get_freetext(db, filters=None, limit=10000):
+    """Query data from MongoDB free_text collection"""
+    
+    # Query the database
+    docs = list(db.protocols_freetexts.find(filters, limit=limit))
+    
+    # Convert ObjectId to string
+    docs = convert_objectid_to_str(docs)
+    
+    # Convert to DataFrame
+    if not docs:
+        return pd.DataFrame()
+    
+    df = pd.DataFrame(docs)
+    
+    return df
+
+
+def get_etu(db, filters=None, limit=10000):
+    query = {}
+    if filters:
+        query.update(filters)
+
+    # Add filter for Schleswig-Flensburg district
+    query["EO_LANDKREIS"] = "Schleswig-Flensburg"
+
+    # Debug: Check if collection exists and get count
+    try:
+        collection_names = db.list_collection_names()
+        if 'etu_leitstelle' not in collection_names:
+            return pd.DataFrame()
+
+        collection_count = db.etu_leitstelle.count_documents(query)
+
+        docs = list(db.etu_leitstelle.find(query).sort("EINSATZBEGINN", -1).limit(limit))
+
+        docs = convert_objectid_to_str(docs)
+        if not docs:
+            return pd.DataFrame()
+
+        df = pd.DataFrame(docs)
+        return df
+
+    except Exception as e:
+        print(f"ERROR in get_etu: {str(e)}")
+        return pd.DataFrame()
