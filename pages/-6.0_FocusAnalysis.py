@@ -15,9 +15,12 @@ if not check_authentication():
 st.title("Schwerpunktanalyse")
 
 st.markdown("""
-Aufgrund wiederkehrender Anfragen ist aufgefallen, das die Addresse häufig als Einsatz ohne Transportindikation auftaucht.
-            mithilfe dieser auswertung soll tiefere einblicke in die daten gewonnen werden, um mögliche ursachen zu identifizieren.
-            In dem folgenden Dropdown-Menü können gezielt Einsätze nach Stadt, Straße und Hausnummer gefiltert werden.
+
+Aufgrund wiederkehrender Anfragen ist aufgefallen, dass die Adresse häufig als Einsatz ohne Transportindikation auftaucht.  
+Mithilfe dieser Auswertung sollen tiefere Einblicke in die Daten gewonnen werden, um mögliche Ursachen zu identifizieren.  
+
+**Filteroptionen:**  
+In dem folgenden Dropdown-Menü können gezielt Einsätze nach Stadt, Straße und Hausnummer gefiltert werden.
 """)
 
 color = ["#8ea9db", "#ffc000", "#ffff00", "#92d050", "#7030a0"]
@@ -334,7 +337,6 @@ if missing_etu > 0:
 
 # Sankey diagram: Flow from ETU CEDUS_CODE to leadingDiagnosis
 st.subheader("Sankey-Diagramm: Von ETU-Diagnose zu endgültiger Diagnose")
-st.write("Hierbei ist zu beachten, dass ein Einsatz mehrere ETU-Diagnosen (CEDUS_CODE) haben kann, wenn mehrere Fahrzeuge beteiligt waren. Daher können die Summen der Flüsse die Gesamtanzahl der Einsätze übersteigen.")
 
 # Prepare data for Sankey (only rows with both CEDUS_CODE and leadingDiagnosis)
 sankey_data = merged_df.dropna(subset=['CEDUS_CODE', 'leadingDiagnosis'])
