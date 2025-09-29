@@ -24,16 +24,19 @@ st.sidebar.write(f'Willkommen *{st.session_state["name"]}*')
 
 
 # Qualitätsziel und Rationale mit Markdown
-st.markdown("""
+st.markdown(
+    """
 ## Qualitätsziel
 Wiederbelebungsmaßnahmen führen zu einem Wiedereinsetzen des Spontankreislaufs                                                            
 ## Rationaleie 
 Das Ziel jeder Reanimationsbemühung stellt die Wiederherstellung des Spontankreislaufs (ROSC) dar. Der Vergleich der ROSC-Raten ist ein national und
 international gebräuchlicher Parameter der Ergebnisqualität der kardiopulmonalen Wiederbelebung.
-""")
+"""
+)
 
 # Berechnungsgrundlage
-st.markdown("""
+st.markdown(
+    """
 ## Berechnungsgrundlage
             
 **Zähler**
@@ -50,6 +53,7 @@ Einsätze mit durch den Rettungsdienst durchgeführter außerklinischer Reanimat
 * Fahrzeit des ersteintreffenden Rettungsmittels (0 – 5 vs. >5 - 10 min vs. >10 – 20 min vs. > 20 min)
 * Initialer EKG-Rhythmus (defibrillierbar vs. nicht-defibrillierbar)
 * Kollaps beobachtet (ja vs. nein)
-* Einsatzort Altenheim vs. Arztpraxis vs. alle anderen""")
+* Einsatzort Altenheim vs. Arztpraxis vs. alle anderen"""
+)
 
 st.subheader("Gefilterte Datenvorschau")

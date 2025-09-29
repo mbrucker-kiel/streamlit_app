@@ -23,7 +23,8 @@ st.sidebar.write(f'Willkommen *{st.session_state["name"]}*')
 # Now load data after authentication
 
 # Qualitätsziel und Rationale mit Markdown
-st.markdown("""
+st.markdown(
+    """
 ## Qualitätsziel
 Bei Patienten mit akuten Schädelverletzungen sollen Bewusstseinsstatus, Glasgow Coma Scale (GCS), Pupillenstatus und die motorische Reaktion aller Extremitäten dokumentiert werden.
                                     
@@ -41,10 +42,12 @@ E5: Folgende Parameter zum neurologischen Befund
 sollen erfasst und dokumentiert werden (Empfehlungsgrad A)
 sowie
 E7: Der neurologische Befund sollte standardisiert erhoben werden. International hat sich hierfür die GCS eingebürgert. Die Limitationen der Skala (Scheinverbesserungen, Befund bei Intubation, Analgosedierung u.a.) müssen berücksichtigt werden (Empfehlungsgrad B).
-Bei Kindern < 2 Jahren ist eine Modifikation des GCS erforderlich. Alternativ kann die AVPU-Skala verwendet werden.""")
+Bei Kindern < 2 Jahren ist eine Modifikation des GCS erforderlich. Alternativ kann die AVPU-Skala verwendet werden."""
+)
 
 # Berechnungsgrundlage
-st.markdown("""
+st.markdown(
+    """
 ## Berechnungsgrundlage
             
 **Zähler**
@@ -57,6 +60,7 @@ Primäreinsätze in der Notfallrettung bei Patienten mit Schädel-Hirn-Trauma, d
             
 **Stratifizierungen** 
 * Nach Schwere des Schädel-Hirn-Traumas (leicht vs. mittel vs. schwer)
-""")
+"""
+)
 
 st.subheader("Gefilterte Datenvorschau")

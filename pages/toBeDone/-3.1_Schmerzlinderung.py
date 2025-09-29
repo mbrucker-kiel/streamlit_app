@@ -24,7 +24,8 @@ st.sidebar.write(f'Willkommen *{st.session_state["name"]}*')
 
 
 # Qualitätsziel und Rationale mit Markdown
-st.markdown("""
+st.markdown(
+    """
 ## Qualitätsziel
 Bei starken Schmerzen (NRS ≥ 5) soll eine wirksame Schmerzlinderung erfolgen (Reduktion auf < 5 oder um mindestens 2 Punkte)
                                                 
@@ -40,10 +41,12 @@ Verbesserung um mindestens 3 Punkte, bzw. eine Reduktion um 40 %. Laut Polytraum
 hinterfragen, ob diese Idealziele bereits während einer relativ kurzen Phase
 der rettungsdienstlichen Notfallversorgung erreicht werden müssen, ggf. unter Inkaufnahme von Risiken durch überhastete medikamentöse Analgetikagaben. Aufgrund dieser Überlegungen wurden die Schwellenwerte für effektive Analgesie konservativer gestaltet.
 Zur Linderung von Schmerzen kommen nicht-pharmakologische (z. B. Lagerung, Ruhigstellung, Kühlung, Zuwendung) und pharmakologische Interventionen zur Anwendung. Medikamentöse Schmerztherapie erfolgt durch notärztliches und Rettungsfachpersonal.
-""")
+"""
+)
 
 # Berechnungsgrundlage
-st.markdown("""
+st.markdown(
+    """
 ## Berechnungsgrundlage
             
 **Zähler**
@@ -60,6 +63,7 @@ initialen NRS ≥ 5 unter Ausschluss einer Behandlungsverweigerung
 * Analgetikagabe (ja vs. nein)
  *NRS bei Übergabe (oder gleichwertig „analgosediert / Narkose“) dokumentiert (nur ja)
                         
-""")
+"""
+)
 
 st.subheader("Gefilterte Datenvorschau")

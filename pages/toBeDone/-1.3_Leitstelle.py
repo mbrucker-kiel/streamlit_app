@@ -25,22 +25,26 @@ st.sidebar.write(f'Willkommen *{st.session_state["name"]}*')
 st.write("Datenloader mit Leitstellendaten erweitern")
 
 # Qualitätsziel und Rationale mit Markdown
-st.markdown("""
+st.markdown(
+    """
 ## Qualitätsziel
 **Die Alarmierung der Einsatzmittel erfolgt verzögerungsfrei**
 
 ## Rationale
 Die Dauer des Notrufgesprächs und der Rettungsmitteldisposition ist Teil des therapiefreien Intervalls. Die Herausforderung für die Leitstellen besteht dabei in einer möglichst raschen, aber dennoch zielgenauen Notrufabfrage und Disposition.
-""")
+"""
+)
 
 # Berechnungsgrundlage
-st.markdown("""
+st.markdown(
+    """
 ## Berechnungsgrundlage
 **Indikator:** Zeitintervall zwischen Notrufannahme und Erstalarmierung des ersten alarmierten Einsatzmittels.
 
 **Grundgesamtheit:** Erstmalige Notrufe über die Notrufnummer mit der höchsten Priorität mit Alarmierung mindestens eines Leitstellen-eigenen Rettungsmittels als Notfalleinsatz
 
 **Ergebnisdarstellung:** Median, Quartile, 10. und 90. Perzentil in Minuten und Sekunden
-""")
+"""
+)
 
 st.subheader("Gefilterte Datenvorschau")

@@ -22,7 +22,9 @@ st.sidebar.write(f'Willkommen *{st.session_state["name"]}*')
 
 # Now load data after authentication
 
-st.write("aktuell noch probleme mit laden der kapnographie daten, hier ist in nida was gespeichert aber in der mongoDb sind leere objekte siehe protokoll '4650'")
+st.write(
+    "aktuell noch probleme mit laden der kapnographie daten, hier ist in nida was gespeichert aber in der mongoDb sind leere objekte siehe protokoll '4650'"
+)
 
 df_kapnographie = data_loading("co2")
 df_inturbation = data_loading("Intubation")
@@ -37,7 +39,8 @@ st.write(df_inturbation)
 # -> hierbei können auch mehrere einträge in df_kapnographie pro protokolId existieren
 
 # Qualitätsziel und Rationale mit Markdown
-st.markdown("""
+st.markdown(
+    """
 ## Qualitätsziel
 **Anwendung der Kapnographie bei allen Patienten mit erfolgter Atemwegssicherung.**
             
@@ -57,10 +60,12 @@ endotrachealen Intubation zur Tubuslagekontrolle und danach zur Dislokations- un
 Während Reanimation soll die Kapnographie zur Überwachung der Qualität
 der Herzdruckmassage und nach Wiedererlangung eines Spontankreislaufs zur
 Steuerung der Ventilation zum Einsatz kommen.
-""")
+"""
+)
 
 # Berechnungsgrundlage
-st.markdown("""
+st.markdown(
+    """
 ## Berechnungsgrundlage
             
 **Zähler**
@@ -76,6 +81,7 @@ Einsätze in Notfallrettung und Interhospitaltransfer bei Patienten mit dokument
 * Reanimationssituation (ja vs. nein)
 * Art der Atemwegssicherung (endotracheale Intubation vs. EGA)
                        
-""")
+"""
+)
 
 st.subheader("Gefilterte Datenvorschau")

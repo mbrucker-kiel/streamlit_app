@@ -23,7 +23,8 @@ st.sidebar.write(f'Willkommen *{st.session_state["name"]}*')
 # Now load data after authentication
 
 # Qualitätsziel und Rationale mit Markdown
-st.markdown("""
+st.markdown(
+    """
 ## Qualitätsziel
 Patienten mit schwerem Schädel-Hirn-Trauma (SHT) sollen narkotisiert und intubiert werden.
                                                             
@@ -43,10 +44,12 @@ zur Verfügung (starker Konsens)..
 Die Verabreichung von Anästhetika ist jedoch mit dem Risiko einer hämodynamischen Verschlechterung verbunden. Es erscheint fraglich, ob bei maximal
 bewusstlosen Patienten (GCS 3, z. B. während Traumareanimation) eine Anästhesie in jedem Fall einen Vorteil für den Patienten bringt. Gleichzeitig gilt es,
 ein Husten oder Pressen sicher zu vermeiden.
-""")
+"""
+)
 
 # Berechnungsgrundlage
-st.markdown("""
+st.markdown(
+    """
 ## Berechnungsgrundlage
             
 **Zähler**
@@ -63,7 +66,8 @@ Palliativsituationen
             
 **Stratifizierungen** 
 * Transportdauer (0 – 10 min vs. >10 – 20 min vs. > 20 min).                 
-""")
+"""
+)
 
 df_inturbation = data_loading("Intubation")
 df_medikamente = data_loading("Medikamente")
@@ -72,4 +76,4 @@ st.write(df_medikamente)
 
 
 # medikamente für Notnakose
-meds = [Propofol, Midazolam, Trapanal, S-Ketamin, Fentanyl, Rocuronium, Succinycholin]
+meds = [Propofol, Midazolam, Trapanal, S - Ketamin, Fentanyl, Rocuronium, Succinycholin]

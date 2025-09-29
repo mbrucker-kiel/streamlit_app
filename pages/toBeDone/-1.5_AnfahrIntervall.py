@@ -23,16 +23,19 @@ st.sidebar.write(f'Willkommen *{st.session_state["name"]}*')
 # Now load data after authentication
 
 # Qualitätsziel und Rationale mit Markdown
-st.markdown("""
+st.markdown(
+    """
 ## Qualitätsziel
 **Das Anfahr- / Anflugintervall des ersteintreffenden Rettungsmittels ist kurz**
             
 ## Rationale
 Das Anfahr- / Anflugintervall des ersteintreffenden Rettungsmittels ist Teil des therapiefreien Intervalls und sollte kurz sein. Dabei spielt insbesondere die Vorhaltung und Lozierung der Rettungsmittel, aber auch das Dispositionsverhalten der Leitstelle eine Rolle.
-""")
+"""
+)
 
 # Berechnungsgrundlage
-st.markdown("""
+st.markdown(
+    """
 ## Berechnungsgrundlage
 **Indikator:** Anfahr- bzw. Anflugintervall (FMS Status 3 bis Status 4) des ersten am Einsatzort eintreffenden, arztbesetzten Rettungsmittels oder Rettungstransportwagens (erster Status 4 für ein Notfallereignis)
             
@@ -43,6 +46,7 @@ st.markdown("""
 * Alarmierung aus FMS-Status 2 vs. andere Status
 * Nach Typ des ersteintreffenden Rettungsmittels (RTW vs. NEF vs. NAW vs. RTH/ITH vs. Sonstige)
                        
-""")
+"""
+)
 
 st.subheader("Gefilterte Datenvorschau")

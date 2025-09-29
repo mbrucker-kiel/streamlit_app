@@ -4,22 +4,25 @@ from auth import check_authentication, logout
 if check_authentication():
     # Logout-Button in der Sidebar anzeigen
     logout()
-    
+
     # Begrüßung anzeigen
     st.sidebar.write(f'Willkommen *{st.session_state["name"]}*')
 
     # Title and introduction
     st.title("🚑 Qualitätskriterien Dashboard")
 
-    st.markdown("""
+    st.markdown(
+        """
     ## Willkommen zum Rettungsdienst-Qualitätsdashboard!
 
     Dieses Dashboard bietet umfassende Analysen zu den definierten Qualitätsindikatoren im Rettungsdienst.  
     Nutze die Navigation in der Seitenleiste, um detaillierte Auswertungen und Trends zu den verschiedenen Kategorien zu entdecken.
-    """)
+    """
+    )
 
     # Categories section
-    st.markdown("""
+    st.markdown(
+        """
     ### 📊 Verfügbare Kategorien
 
     | Nr. | Kategorie | Beschreibung |
@@ -31,10 +34,12 @@ if check_authentication():
     | 5️⃣ | **Zielklinikauswahl** | Evaluation der Zielklinikentscheidungen |
 
     👉 *Wähle eine Kategorie in der Seitenleiste aus, um die entsprechenden Auswertungen zu sehen.*
-    """)
+    """
+    )
 
     # Hinweis zu Datenbank-Performance
-    st.info("""
+    st.info(
+        """
     Aktuell werden **standardmäßig 10.000 Einträge** aus der Datenbank geladen, 
     um die Performance zu gewährleisten.  
     Dies ermöglicht ein erstes Testen der Auswertungen, 
@@ -43,12 +48,20 @@ if check_authentication():
     Mithilfe der dargestellten protocollId lassen sich einzelne Einsätze in der NIDA-Datenbank nachvollziehen.
             
     Die einzelnen Protokolle können sich anhand der Protokoll ID angeschaut werden:
-    """)
+    """
+    )
 
     # Show URLs from environment variables
     import os
-    base_url = os.getenv("NIDA_PROTOCOL_BASE_URL", "https://nsf-nidaclient.meddv.de/protocols/details/5da173f88f6e8419454ec34c620f6b35?protocolId=")
-    example_url = os.getenv("NIDA_PROTOCOL_EXAMPLE_URL", "https://nsf-nidaclient.meddv.de/protocols/details/5da173f88f6e8419454ec34c620f6b35?protocolId=143212")
+
+    base_url = os.getenv(
+        "NIDA_PROTOCOL_BASE_URL",
+        "https://nsf-nidaclient.meddv.de/protocols/details/5da173f88f6e8419454ec34c620f6b35?protocolId=",
+    )
+    example_url = os.getenv(
+        "NIDA_PROTOCOL_EXAMPLE_URL",
+        "https://nsf-nidaclient.meddv.de/protocols/details/5da173f88f6e8419454ec34c620f6b35?protocolId=143212",
+    )
 
     st.markdown(f"**Basis-URL:** {base_url}")
     st.markdown(f"**Beispiel:** {example_url}")
@@ -57,7 +70,8 @@ if check_authentication():
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("""
+        st.markdown(
+            """
         ### 📝 Datengrundlage
         
         Die dargestellten Qualitätsindikatoren basieren auf den Empfehlungen der  
@@ -70,10 +84,12 @@ if check_authentication():
         - `vitals`
         - `index`
         - `details`
-        """)
+        """
+        )
 
     with col2:
-        st.markdown("""
+        st.markdown(
+            """
         ### 🔄 Versionsverlauf
         **Version 2.1**
         - Hotspot-Analyse 6.0
@@ -98,10 +114,12 @@ if check_authentication():
         - Integration des Leitstellen-Datensatzes für *Einsatzannahme-Prozesszeiten*
         - Entwicklung aller Qualitätsindikatoren (1.1.1 bis 5.4)
         - Erweiterung um zusätzliche Qualitätsindikatoren
-        """)
+        """
+        )
 
     # Footer
-    st.markdown("""
+    st.markdown(
+        """
     ---
     ### 📬 Kontakt
 
@@ -112,7 +130,7 @@ if check_authentication():
     Das Dashboard wird kontinuierlich weiterentwickelt – Feedback und Anregungen sind jederzeit willkommen.
 
     *Stand: September 2025*
-    """)
+    """
+    )
 else:
     st.warning("Bitte melden Sie sich an, um auf das Dashboard zuzugreifen.")
-

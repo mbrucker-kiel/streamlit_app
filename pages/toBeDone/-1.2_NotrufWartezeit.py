@@ -16,6 +16,8 @@ st.sidebar.write(f'Willkommen *{st.session_state["name"]}*')
 
 # Now show content after authentication
 
-st.write("Indikator Zeitintervall zwischen Aufschalten des Notrufs und Notrufannahme in der Leitstelle")
+st.write(
+    "Indikator Zeitintervall zwischen Aufschalten des Notrufs und Notrufannahme in der Leitstelle"
+)
 
 st.write("Aktuell kein Datensatz vorhanden")

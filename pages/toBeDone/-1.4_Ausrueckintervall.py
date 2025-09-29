@@ -23,16 +23,19 @@ st.sidebar.write(f'Willkommen *{st.session_state["name"]}*')
 # Now load data after authentication
 
 # Qualitätsziel und Rationale mit Markdown
-st.markdown("""
+st.markdown(
+    """
 ## Qualitätsziel
 **Das Ausrückintervall ist kurz**
             
 ## Rationale
 Das Ausrückintervall ist Teil des therapiefreien Intervalls und soll möglichst kurz sein. Dabei spielen sowohl baulich-technische Gegebenheiten als auch Verhaltensaspekte der Besatzungen eine Rolle.
-""")
+"""
+)
 
 # Berechnungsgrundlage
-st.markdown("""
+st.markdown(
+    """
 ## Berechnungsgrundlage
 **Indikator:** Zeitintervall zwischen erster Alarmierung und Ausrücken des Rettungsmittels (FMS-Status 3)
             
@@ -44,6 +47,7 @@ st.markdown("""
 * Alarmierung aus FMS-Status 2 vs. andere Status
 * Nach Rettungsmitteltyp (RTW vs. NEF vs. NAW vs. Luftrettung)
                        
-""")
+"""
+)
 
 st.subheader("Gefilterte Datenvorschau")
