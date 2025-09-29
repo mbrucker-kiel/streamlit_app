@@ -1,0 +1,18 @@
+name: Deploy to self-hosted runner
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Rebuild and restart Docker Compose
+        run: |
+          docker-compose down
+          docker-compose up -d --build
