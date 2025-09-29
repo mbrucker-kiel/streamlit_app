@@ -44,9 +44,9 @@ if check_authentication():
     um die Performance zu gewährleisten.  
     Dies ermöglicht ein erstes Testen der Auswertungen, 
     welche anschließend auf alle verfügbaren Einträge ausgeweitet werden können.
-            
+
     Mithilfe der dargestellten protocollId lassen sich einzelne Einsätze in der NIDA-Datenbank nachvollziehen.
-            
+
     Die einzelnen Protokolle können sich anhand der Protokoll ID angeschaut werden:
     """
     )
@@ -54,14 +54,8 @@ if check_authentication():
     # Show URLs from environment variables
     import os
 
-    base_url = os.getenv(
-        "NIDA_PROTOCOL_BASE_URL",
-        "https://nsf-nidaclient.meddv.de/protocols/details/5da173f88f6e8419454ec34c620f6b35?protocolId=",
-    )
-    example_url = os.getenv(
-        "NIDA_PROTOCOL_EXAMPLE_URL",
-        "https://nsf-nidaclient.meddv.de/protocols/details/5da173f88f6e8419454ec34c620f6b35?protocolId=143212",
-    )
+    base_url = os.getenv("NIDA_PROTOCOL_BASE_URL")
+    example_url = os.getenv("NIDA_PROTOCOL_EXAMPLE_URL")
 
     st.markdown(f"**Basis-URL:** {base_url}")
     st.markdown(f"**Beispiel:** {example_url}")
@@ -73,10 +67,10 @@ if check_authentication():
         st.markdown(
             """
         ### 📝 Datengrundlage
-        
+
         Die dargestellten Qualitätsindikatoren basieren auf den Empfehlungen der  
         **AG "Qualität im Rettungsdienst" (Version 2.1, Stand 05.02.2025)**.
-        
+
         **Aktuelle Datenquellen (NIDA-Protokoll API-Routen):**
         - `findings`
         - `measures`
@@ -96,20 +90,20 @@ if check_authentication():
         - Data Helper: KTW Indikationsprüfung 
         - Data Loader: freetext, ETÜ
         - Merging von NIDA-Protokollen und ETÜ Daten            
-                    
+
         **Version 2.0**
         - Neuer Data Loader mit DB-Caching (1 Woche)
         - Erweiterte Filtermöglichkeiten (Jahr, Datenmenge)
         - Zusätzliche Auswertungen (5.1 bis 5.3)
         - Einbindung Data-Loader für 2.1 bis 2.6
-        
+
         **Version 1.0**
         - Erstellung des Streamlit-Dashboards
         - Integration der Basisdatengrundlage
         - Zeitauswertung 
-        
+
         ### 🔮 Ausblick
-        
+
         **Geplante Erweiterungen:**
         - Integration des Leitstellen-Datensatzes für *Einsatzannahme-Prozesszeiten*
         - Entwicklung aller Qualitätsindikatoren (1.1.1 bis 5.4)

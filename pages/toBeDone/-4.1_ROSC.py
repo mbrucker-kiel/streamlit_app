@@ -47,8 +47,8 @@ Behandlungsverweigerung und Palliativsituationen
 Einsätze mit durch den Rettungsdienst durchgeführter außerklinischer Reanimation unter Ausschluss von Behandlungsverweigerung und Palliativsituationen
         
 **Ergebnisdarstellung:** Anteil in Prozent
-            
-**Stratifizierungen** 
+           
+**Stratifizierungen**
 * Laienreanimation (ja vs. nein)
 * Fahrzeit des ersteintreffenden Rettungsmittels (0 – 5 vs. >5 - 10 min vs. >10 – 20 min vs. > 20 min)
 * Initialer EKG-Rhythmus (defibrillierbar vs. nicht-defibrillierbar)

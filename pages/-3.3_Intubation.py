@@ -1,10 +1,5 @@
 import streamlit as st
-import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-import numpy as np
 from data_loading import data_loading
-import datetime
 from auth import check_authentication, logout
 
 # Authentication check
@@ -27,7 +22,7 @@ st.markdown(
     """
 ## Qualitätsziel
 Patienten mit schwerem Schädel-Hirn-Trauma (SHT) sollen narkotisiert und intubiert werden.
-                                                            
+                                              
 ## Rationaleie 
 Das Ziel der Notfallversorgung bei schwerem SHT ist die Vermeidung eines sekundären Hirnschadens. Dieser entsteht z.B. durch Hypoventilation und/oder
 Hypoxie sowie sekundär nach Aspiration. Es konnte ein Outcomevorteil für
@@ -51,7 +46,7 @@ ein Husten oder Pressen sicher zu vermeiden.
 st.markdown(
     """
 ## Berechnungsgrundlage
-            
+
 **Zähler**
 Fälle mit dokumentierter präklinischer Intubation oder Atemwegssicherung
 mittels extraglottischem Atemwegsdevice unter Gabe von mindestens einem Narkotikum (Analgetikum, Hypnotikum) oder eines Muskelrelaxans bei Primäreinsätzen in der Notfallrettung bei Patienten mit Verdacht auf schweres
@@ -61,9 +56,9 @@ Schädel-Hirn-Trauma unter Ausschluss von Behandlungsverweigerung und Palliativs
 Primäreinsätze in der Notfallrettung bei Patienten mit Verdacht auf schweres
 Schädel-Hirn-Trauma unter Ausschluss von Behandlungsverweigerung und
 Palliativsituationen
-             
+
 **Ergebnisdarstellung:** Anteil in Prozent
-            
+
 **Stratifizierungen** 
 * Transportdauer (0 – 10 min vs. >10 – 20 min vs. > 20 min).                 
 """
@@ -76,4 +71,4 @@ st.write(df_medikamente)
 
 
 # medikamente für Notnakose
-meds = [Propofol, Midazolam, Trapanal, S - Ketamin, Fentanyl, Rocuronium, Succinycholin]
+meds = ["Propofol", "Midazolam", "Trapanal", "S - Ketamin", "Fentanyl", "Rocuronium", "Succinycholin"]

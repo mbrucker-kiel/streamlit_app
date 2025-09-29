@@ -1,9 +1,5 @@
 import pandas as pd
-import numpy as np
 import streamlit as st
-import matplotlib.pyplot as plt
-import seaborn as sns
-import plotly.express as px
 import plotly.graph_objects as go
 import ast
 from data_loading import data_loading
@@ -106,7 +102,7 @@ rea_cases = df_checked[df_checked["rea_status"] == True].copy()
 # Display basic count
 rea_count = len(rea_cases)
 st.write(f"Anzahl Reanimationsfälle mit ROSC: {rea_count}")
-rea_cases
+
 if rea_count > 0:
     # Calculate key metrics
     eligible_count = rea_cases["hospital_eligible"].sum()

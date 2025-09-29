@@ -27,8 +27,8 @@ st.markdown(
     """
 ## Qualitätsziel
 Patienten mit STEMI erhalten ASS gemäß aktueller Empfehlungen.
-                                                            
-## Rationale 
+                                                
+## Rationale
 Patienten mit akutem ST-Hebungs-Myokardinfarkt (STEMI) sollen gemäß der
 Leitlinie der European Society of Cardiology so schnell wie möglich Acetylsalicylsäure (ASS) erhalten, sofern keine Kontraindikation vorliegt (Klasse-I-Empfehlung, Evidenz B).
 
@@ -39,15 +39,15 @@ Leitlinie der European Society of Cardiology so schnell wie möglich Acetylsalic
 st.markdown(
     """
 ## Berechnungsgrundlage
-            
+
 **Zähler**
 Fälle mit dokumentierter ASS-Gabe bei Primäreinsätzen in der Notfallrettung bei Patienten mit dokumentiertem STEMI unter Ausschluss von Behandlungsverweigerung und Palliativsituationen            
 
 **Nenner**
 Primäreinsätze in der Notfallrettung bei Patienten mit dokumentiertem STEMI unter Ausschluss von Behandlungsverweigerung und Palliativsituationen
-                                                                    
+
 **Ergebnisdarstellung:** Anteil in Prozent
-                      
+
 """
 )
 
