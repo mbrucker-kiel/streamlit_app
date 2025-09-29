@@ -28,7 +28,7 @@ color_darker = ["#6d8ac9", "#e6b800", "#e6e600", "#6aa84f", "#4a1d6a"]
 # nef, ktw, sktw, rtw, unterstützer/sonstige
 # darker when missionTypeIncludes "kein Transport"
 
-index_df = data_loading("Index", limit=50001) 
+index_df = data_loading("Index", limit=50000) 
 
 
 # filter for patient address use env variables as placeholders
