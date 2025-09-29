@@ -6,3 +6,6 @@ dotenv
 streamlit_authenticator
 matplotlib
 seaborn
+pyproj
+folium
+streamlit-folium

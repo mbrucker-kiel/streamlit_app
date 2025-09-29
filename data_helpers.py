@@ -135,21 +135,15 @@ def check_requirements_enhanced(anamnesis_text):
     medical_care = None
     # First check for logistical/social/pedagogical care (most specific)
     if any(phrase in text for phrase in [
-        "logistische betreuung",
-        "soziale betreuung", 
-        "pädagogische betreuung",
-        "psychologische betreuung",
-        "begleitperson notwendig",
-        "keine medizinische betreuung notwendig geworden, sondern lediglich eine logistische"
+        "keine medizinische betreuung notwendig geworden"
     ]):
-        medical_care = "logistische_soziale_paedagogische"
+        medical_care = "nicht_indiziert"
     # Then check for medical care needed
     elif any(phrase in text for phrase in [
         "medizinische betreuung notwendig",
         "medizinische versorgung erforderlich",
         "ärztliche betreuung notwendig",
         "medizinische intervention",
-        "therapeutische maßnahmen",
         "während des transport wurde eine medizinische betreuung notwendig"
     ]):
         medical_care = "indiziert"
@@ -162,16 +156,6 @@ def check_requirements_enhanced(anamnesis_text):
         "keine medizinische betreuung notwendig geworden, sondern lediglich eine logistische"
     ]):
         medical_care = "logistische_soziale_paedagogische"
-    # Finally check for no medical care needed
-    elif any(phrase in text for phrase in [
-        "keine medizinische betreuung notwendig",
-        "keine medizinische versorgung erforderlich",
-        "keine ärztliche betreuung notwendig",
-        "keine medizinische intervention",
-        "keine therapeutischen maßnahmen",
-        "während des gesamten transports ist keine medizinische betreuung notwendig geworden"
-    ]):
-        medical_care = "nicht_indiziert"
     
     # KTW equipment checking (enhanced patterns) - prioritize specific over general
     ktw_equipment = None
@@ -256,9 +240,6 @@ def check_requirements_enhanced(anamnesis_text):
     # Krankenfahrt mentioned
     krankenfahrt_mentioned = any(phrase in text for phrase in [
         "krankenfahrt",
-        "krankenwagen",
-        "ktw",
-        "krankentransport"
     ])
     
     return {

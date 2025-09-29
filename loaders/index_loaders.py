@@ -47,7 +47,7 @@ def get_index(db, filters=None, limit=10000):
 def get_details(db, filters=None, limit=10000):
     """Query data from MongoDB protocols_details collection"""
     # Get details data
-    nida_details_cursor = db.protocols_details.find(filters, limit=limit)
+    nida_details_cursor = db.protocols_details.find(filters).sort("content.dateStatusAlarm", -1).limit(limit)
     nida_details_list = list(nida_details_cursor)
     nida_details_list = convert_objectid_to_str(nida_details_list)
 
