@@ -13,7 +13,7 @@ def cached_year_filter(start_year: int, end_year: int, limit: int = 10000):
     return filter_data_by_year(start_year, end_year, limit)
 
 
-@st.cache_data(ttl=3600, show_spinner="Loading data...")
+@st.cache_data(ttl=604800, show_spinner="Loading data...")
 def cached_db_query(
     metric: str,
     limit: int = 10000,
