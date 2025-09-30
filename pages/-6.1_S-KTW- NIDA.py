@@ -477,7 +477,112 @@ else:
 
 st.subheader("Hypothesentests")
 
-st.write("TO BE DONE")
+st.write("Durch die Einführung von S-KTW werden Notfallsanitäter auf RTW häufiger (in Relation zu ihrer Arbeitszeit) mit erweiterten Versorgungsmaßnehmen (EVM) beaufschlagt.")
+
+# Load EVM data
+evm_df = data_loading("EVM", limit=20002)
+
+# Filter protocols with EVM count > 0
+evm_protocols = index_df[index_df["evmCount"] >= 0]["protocolId"].unique()
+
+# Filter merged_df to EVM protocols with date range filtering (but no vehicle selection)
+# Apply the same date filtering as used for filtered_df
+if "missionDate" in merged_df.columns:
+    mission_dates = merged_df["missionDate"]
+    if mission_dates.dt.tz is not None:
+        mission_dates = mission_dates.dt.tz_localize(None)
+
+    date_filtered_df = merged_df[
+        (mission_dates >= start_dt) & (mission_dates <= end_dt)
+    ].copy()
+    
+    # Also filter on alarmTime using the same date range
+    if "alarmTime" in date_filtered_df.columns:
+        alarm_times = pd.to_datetime(date_filtered_df["alarmTime"], errors="coerce")
+        if alarm_times.dt.tz is not None:
+            alarm_times = alarm_times.dt.tz_localize(None)
+        date_filtered_df = date_filtered_df[
+            (alarm_times >= start_dt) & (alarm_times <= end_dt)
+        ].copy()
+else:
+    date_filtered_df = merged_df.copy()
+
+evm_merged_df = date_filtered_df[date_filtered_df["protocolId"].isin(evm_protocols)].copy()
+
+
+evm_merged_df["vehicleType"] = evm_merged_df["callSign"].apply(classify_vehicle_type)
+
+# Differences in descriptions between RTW and S-KTW
+evm_with_vehicle = evm_df.merge(evm_merged_df[["protocolId", "vehicleType"]], on="protocolId", how="left")
+rtw_evm = evm_with_vehicle[evm_with_vehicle["vehicleType"] == "RTW"]
+sktw_evm = evm_with_vehicle[evm_with_vehicle["vehicleType"] == "S-KTW"]
+
+# Combined comparison chart
+if not rtw_evm.empty and not sktw_evm.empty and "description" in rtw_evm.columns and "description" in sktw_evm.columns:
+    st.subheader("Vergleich EVM Beschreibungen: RTW vs S-KTW")
+    st.write("RTW Percentage = (Count of EVM description / Total RTW missions) × 100")
+    st.write("SKTW Percentage = (Count of EVM description / Total S-KTW missions) × 100")
+    # Get description counts for both vehicle types
+    rtw_desc_counts = rtw_evm["description"].value_counts().reset_index()
+    rtw_desc_counts.columns = ["Description", "Count"]
+    
+    sktw_desc_counts = sktw_evm["description"].value_counts().reset_index()
+    sktw_desc_counts.columns = ["Description", "Count"]
+    
+    # Get top descriptions from both
+    rtw_top = rtw_desc_counts.head(15).copy()
+    rtw_top["vehicleType"] = "RTW"
+    
+    sktw_top = sktw_desc_counts.head(15).copy()
+    sktw_top["vehicleType"] = "S-KTW"
+    
+    # Combine
+    combined_desc = pd.concat([rtw_top, sktw_top], ignore_index=True)
+    
+    # Create combined bar chart
+    fig_combined = px.bar(
+        combined_desc, 
+        x="Description", 
+        y="Count", 
+        color="vehicleType",
+        title="EVM Beschreibungen Vergleich: RTW vs S-KTW (Absolut)",
+        barmode="group",
+        labels={"Count": "Anzahl", "Description": "Beschreibung", "vehicleType": "Fahrzeugtyp"}
+    )
+    fig_combined.update_layout(xaxis_tickangle=-45)
+    st.plotly_chart(fig_combined)
+    
+    # Alternative: Percentage view (percentage of ALL missions that have this EVM type)
+    # Get total missions for each vehicle type in the date range
+    total_rtw_missions = date_filtered_df[date_filtered_df["callSign"].apply(
+        lambda x: str(x) if pd.notna(x) else ""
+    ).str.contains("-83-", na=False)].shape[0]
+    
+    total_sktw_missions = date_filtered_df[date_filtered_df["callSign"].apply(
+        lambda x: str(x) if pd.notna(x) else ""
+    ).str.contains("-85-", na=False)].shape[0]
+    
+    combined_desc["Percentage"] = combined_desc.apply(
+        lambda row: (row["Count"] / total_rtw_missions * 100) if row["vehicleType"] == "RTW"
+                    else (row["Count"] / total_sktw_missions * 100), 
+        axis=1
+    )
+    
+    fig_percent = px.bar(
+        combined_desc, 
+        x="Description", 
+        y="Percentage", 
+        color="vehicleType",
+        title="EVM Beschreibungen Vergleich: RTW vs S-KTW (Prozentual)",
+        barmode="group",
+        labels={"Percentage": "Prozent (%)", "Description": "Beschreibung", "vehicleType": "Fahrzeugtyp"}
+    )
+    fig_percent.update_layout(xaxis_tickangle=-45)
+    st.plotly_chart(fig_percent)
+
+
+st.dataframe(evm_with_vehicle)
+
 
 # st.markdown("""
 #             S-KTW entlastet RTW ohne relevante Qualitätsnachteile

@@ -4,7 +4,7 @@ from .findings_loaders import (
     get_neurological_signs,
     get_pupil_status,
 )
-from .measures_loaders import get_medikamente, get_intubation, get_12lead_ecg
+from .measures_loaders import get_medikamente, get_intubation, get_12lead_ecg, get_evm
 from .results_loaders import (
     get_metric_from_results,
     get_reanimation,
@@ -40,4 +40,5 @@ LOADERS = {
     "Neurologische_Auffälligkeiten": get_neurological_signs,
     "Pupillenstatus": get_pupil_status,
     "ETÜ": get_etu,
+    "EVM": get_evm,
 }

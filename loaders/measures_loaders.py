@@ -141,3 +141,37 @@ def get_12lead_ecg(db, limit=10000):
         "collection",
     ]
     return df[keep]
+
+
+def get_evm(db, limit=10000):
+    """Load EVM (erweiterte Versorgungsmaßnahmen) data from protocols_measures"""
+    query = {"data": {"$elemMatch": {"value_11": "EVM"}}}
+    docs = list(db.protocols_measures.find(query, limit=limit))
+    if not docs:
+        return pd.DataFrame()
+
+    df = pd.DataFrame(docs).explode("data").reset_index(drop=True)
+    flat = pd.json_normalize(df["data"])
+    df = pd.concat([df.drop(columns=["data"]), flat], axis=1)
+
+    df = df[df["value_11"] == "EVM"]
+
+    df["metric"] = "EVM"
+    df["type"] = df.get("value_1")
+    df["description"] = df.get("value_2")
+    df["applicant"] = df.get("value_10")
+    df["timestamp"] = df.get("timeStamp")
+    df["source"] = df.get("source")
+    df["collection"] = "protocols_measures"
+
+    keep = [
+        "protocolId",
+        "metric",
+        "type",
+        "description",
+        "applicant",
+        "timestamp",
+        "source",
+        "collection",
+    ]
+    return df[keep]
