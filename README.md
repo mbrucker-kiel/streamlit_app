@@ -1,6 +1,4 @@
-# NIDA Data Analysis Dashboard
-
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://streamlit.io/gallery)
+# Data Analysis Dashboard
 
 ## Overview
 
@@ -10,7 +8,7 @@ This project is a data analysis dashboard built with Streamlit that processes an
 
 ```
 ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│ medDV NIDA   │ -> │ medDV        │ -> │ MongoDB     │ -> │ Data Loader │
+│ medDV NIDA  │ -> │ medDV       │ -> │ MongoDB     │ -> │ Data Loader │
 │ Tablet Data │    │ Database    │    │ Database    │    │             │
 └─────────────┘    └─────────────┘    └─────────────┘    └──────┬──────┘
                                                                 │
@@ -48,7 +46,7 @@ The MongoDB database `einsatzdaten` contains the following collections (based on
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/repository-name.git
+git clone https://github.com/mbrucker-kiel/streamlit_app
 cd repository-name
 
 # Install dependencies
@@ -56,20 +54,15 @@ pip install -r requirements.txt
 
 # Configure MongoDB connection
 # Edit .env with your MongoDB connection details
+# Setup config.yaml with Usernames
 
 # Run the Streamlit app
-streamlit run app.py
+streamlit run Home.py
 ```
 
 ## Usage
 
-1. Launch the application using `streamlit run app.py`
+1. Launch the application using `streamlit run Home.py`
 2. Navigate through different pages using the sidebar
 3. Select metrics, date ranges, and other filters as needed
 4. Interact with the visualizations to explore the data
-
-## Contact
-
-For questions or further information, please contact:
-- Email: [martin.brucker@rettungsdienst-sl-fl.de](mailto:martin.brucker@rettungsdienst-sl-fl.de)
-- GitHub: [mbrucker-kiel](https://github.com/mbrucker-kiel)
