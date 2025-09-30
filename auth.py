@@ -4,46 +4,58 @@ from yaml.loader import SafeLoader
 import streamlit_authenticator as stauth
 import os
 
+
 # Hilfsfunktion zum Überprüfen des Authentifizierungsstatus
 def check_authentication():
     """Überprüft, ob der Benutzer authentifiziert ist und leitet ggf. zur Anmeldeseite weiter"""
     # Prüfen, ob der Authentifizierungsstatus bereits im Session State ist
-    if 'authentication_status' not in st.session_state or not st.session_state['authentication_status']:
+    if (
+        "authentication_status" not in st.session_state
+        or not st.session_state["authentication_status"]
+    ):
         # Lade Konfiguration
-        if os.path.exists('config.yaml'):
-            with open('config.yaml', encoding='utf-8') as file:
+        if os.path.exists("config.yaml"):
+            with open("config.yaml", encoding="utf-8") as file:
                 config = yaml.load(file, Loader=SafeLoader)
         else:
-            st.error("Konfigurationsdatei nicht gefunden. Bitte führen Sie zuerst auth_config.py aus.")
+            st.error(
+                "Konfigurationsdatei nicht gefunden. Bitte führen Sie zuerst auth_config.py aus."
+            )
             st.stop()
 
         # Erstelle Authentifizierungsobjekt
         authenticator = stauth.Authenticate(
-            config['credentials'],
-            config['cookie']['name'],
-            config['cookie']['key'],
-            config['cookie']['expiry_days'],
+            config["credentials"],
+            config["cookie"]["name"],
+            config["cookie"]["key"],
+            config["cookie"]["expiry_days"],
         )
 
+
 # Hilfsfunktion zum Überprüfen des Authentifizierungsstatus
 def check_authentication():
     """Überprüft, ob der Benutzer authentifiziert ist und leitet ggf. zur Anmeldeseite weiter"""
     # Prüfen, ob der Authentifizierungsstatus bereits im Session State ist
-    if 'authentication_status' not in st.session_state or not st.session_state['authentication_status']:
+    if (
+        "authentication_status" not in st.session_state
+        or not st.session_state["authentication_status"]
+    ):
         # Lade Konfiguration
-        if os.path.exists('config.yaml'):
-            with open('config.yaml', encoding='utf-8') as file:
+        if os.path.exists("config.yaml"):
+            with open("config.yaml", encoding="utf-8") as file:
                 config = yaml.load(file, Loader=SafeLoader)
         else:
-            st.error("Konfigurationsdatei nicht gefunden. Bitte führen Sie zuerst auth_config.py aus.")
+            st.error(
+                "Konfigurationsdatei nicht gefunden. Bitte führen Sie zuerst auth_config.py aus."
+            )
             st.stop()
 
         # Erstelle Authentifizierungsobjekt
         authenticator = stauth.Authenticate(
-            config['credentials'],
-            config['cookie']['name'],
-            config['cookie']['key'],
-            config['cookie']['expiry_days'],
+            config["credentials"],
+            config["cookie"]["name"],
+            config["cookie"]["key"],
+            config["cookie"]["expiry_days"],
         )
 
         # Zeige Login-Widget und prüfe das Ergebnis
@@ -61,30 +73,37 @@ def check_authentication():
             st.stop()
 
         # Speichere Authentifizierungsstatus im Session State
-        st.session_state['authentication_status'] = authentication_status
+        st.session_state["authentication_status"] = authentication_status
         if authentication_status:
-            st.session_state['name'] = name
-            st.session_state['username'] = username
-            st.session_state['authenticator'] = authenticator
-            st.session_state['config'] = config
+            st.session_state["name"] = name
+            st.session_state["username"] = username
+            st.session_state["authenticator"] = authenticator
+            st.session_state["config"] = config
             return True
         elif authentication_status == False:
-            st.error('Benutzername/Passwort ist falsch')
+            st.error("Benutzername/Passwort ist falsch")
             return False
         else:
-            st.warning('Bitte geben Sie Ihren Benutzernamen und Ihr Passwort ein')
+            st.warning("Bitte geben Sie Ihren Benutzernamen und Ihr Passwort ein")
             return False
 
-    return st.session_state['authentication_status']
+    return st.session_state["authentication_status"]
+
 
 # Hilfsfunktion für Logout
 def logout():
     """Meldet den Benutzer ab"""
-    if 'authenticator' in st.session_state:
-        st.session_state['authenticator'].logout('Abmelden', 'sidebar')
+    if "authenticator" in st.session_state:
+        st.session_state["authenticator"].logout("Abmelden", "sidebar")
         # Wenn der Logout-Button geklickt wurde, wird der Session State zurückgesetzt
-        if st.session_state['logout']:
-            for key in ['authentication_status', 'name', 'username', 'authenticator', 'config']:
+        if st.session_state["logout"]:
+            for key in [
+                "authentication_status",
+                "name",
+                "username",
+                "authenticator",
+                "config",
+            ]:
                 if key in st.session_state:
                     del st.session_state[key]
             st.experimental_rerun()

@@ -15,6 +15,7 @@ VITALS = {
     "temp": "temp",
 }
 
+
 def get_vitals(db, vital, limit=10000):
     """Load vital signs from vitals collection"""
     # Find the collection name for the given vital shortcode
@@ -23,33 +24,33 @@ def get_vitals(db, vital, limit=10000):
         if code == vital:
             collection_name = coll
             break
-    
+
     if not collection_name:
         return pd.DataFrame()
-    
+
     # Query the appropriate vitals collection
     query = {}  # No specific query filter needed
     try:
         collection = db[f"vitals_{collection_name}"]
         docs = list(collection.find(query, limit=limit))
-        
+
         if not docs:
             return pd.DataFrame()
-        
+
         # Process the documents
         df = pd.DataFrame(docs)
-        
+
         # Ensure the dataframe has the expected columns
         if df.empty:
             return pd.DataFrame()
-        
+
         # Extract data - handle both direct fields and nested data structure
         if "data" in df.columns:
             # Handle nested data structure
             df = df.explode("data").reset_index(drop=True)
             flat = pd.json_normalize(df["data"])
             df = pd.concat([df.drop(columns=["data"]), flat], axis=1)
-        
+
         # Create standardized output
         df["metric"] = vital
         df["value"] = df.get("value", None)
@@ -59,15 +60,37 @@ def get_vitals(db, vital, limit=10000):
         df["timestamp"] = df.get("timeStamp", df.get("timestamp", None))
         df["source"] = df.get("source", None)
         df["collection"] = f"vitals_{collection_name}"
-        
+
         # Ensure all expected columns exist
-        for col in ["protocolId", "metric", "value", "unit", "o2Administration", "description", "timestamp", "source", "collection"]:
+        for col in [
+            "protocolId",
+            "metric",
+            "value",
+            "unit",
+            "o2Administration",
+            "description",
+            "timestamp",
+            "source",
+            "collection",
+        ]:
             if col not in df.columns:
                 df[col] = None
-        
-        keep = ["protocolId", "metric", "value", "unit", "o2Administration", "description", "timestamp", "source", "collection"]
+
+        keep = [
+            "protocolId",
+            "metric",
+            "value",
+            "unit",
+            "o2Administration",
+            "description",
+            "timestamp",
+            "source",
+            "collection",
+        ]
         return df[keep]
-    
+
     except Exception as e:
-        print(f"Error loading vital {vital} from collection vitals_{collection_name}: {e}")
+        print(
+            f"Error loading vital {vital} from collection vitals_{collection_name}: {e}"
+        )
         return pd.DataFrame()

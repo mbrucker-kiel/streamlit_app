@@ -24,16 +24,19 @@ st.sidebar.write(f'Willkommen *{st.session_state["name"]}*')
 
 
 # Qualitätsziel und Rationale mit Markdown
-st.markdown("""
+st.markdown(
+    """
 ## Qualitätsziel
 Bei Patienten mit V.a. Schlaganfall sollen (zusätzlich zu den Vitalparametern) GCS, BZ, Seitenzeichen / Sprachstörung, Körpertemperatur, Rhythmusfeststellung und Symptombeginn dokumentiert werden.
                         
 ## Rationaleie 
 Um die rasche und zielgerichtete Therapie zu bahnen ist bei Patienten mit akutem fokalem neurologischem Defizit eine sorgfältige präklinische Befunderhebung erforderlich. Dies erlaubt eine Verlaufsbeurteilung und Differentialdiagnose des Schlaganfalls. Versäumnisse können in der Klinik nur bedingt kompensiert werden. Die von den einschlägigen Leitlinien empfohlene Befunddokumentation wird von diesem Qualitätsindikator adressiert.
-""")
+"""
+)
 
 # Berechnungsgrundlage
-st.markdown("""
+st.markdown(
+    """
 ## Berechnungsgrundlage
             
 **Zähler**
@@ -47,6 +50,7 @@ Primäreinsätze in der Notfallrettung bei Patienten mit V.a. akuten Schlaganfal
 **Stratifizierungen** 
 * Symptombeginn bis einschließlich 6 Stunden bis Ankunft (frühester dokumentierter Status 4 eines RTW / arztbesetzten Rettungsmittels) vs. > 6 Stunden
                        
-""")
+"""
+)
 
 st.subheader("Gefilterte Datenvorschau")
