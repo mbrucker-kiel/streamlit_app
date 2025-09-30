@@ -31,33 +31,6 @@ def check_authentication():
             config["cookie"]["expiry_days"],
         )
 
-
-# Hilfsfunktion zum Überprüfen des Authentifizierungsstatus
-def check_authentication():
-    """Überprüft, ob der Benutzer authentifiziert ist und leitet ggf. zur Anmeldeseite weiter"""
-    # Prüfen, ob der Authentifizierungsstatus bereits im Session State ist
-    if (
-        "authentication_status" not in st.session_state
-        or not st.session_state["authentication_status"]
-    ):
-        # Lade Konfiguration
-        if os.path.exists("config.yaml"):
-            with open("config.yaml", encoding="utf-8") as file:
-                config = yaml.load(file, Loader=SafeLoader)
-        else:
-            st.error(
-                "Konfigurationsdatei nicht gefunden. Bitte führen Sie zuerst auth_config.py aus."
-            )
-            st.stop()
-
-        # Erstelle Authentifizierungsobjekt
-        authenticator = stauth.Authenticate(
-            config["credentials"],
-            config["cookie"]["name"],
-            config["cookie"]["key"],
-            config["cookie"]["expiry_days"],
-        )
-
         # Zeige Login-Widget und prüfe das Ergebnis
         login_result = authenticator.login()
 
@@ -106,4 +79,4 @@ def logout():
             ]:
                 if key in st.session_state:
                     del st.session_state[key]
-            st.experimental_rerun()
+            st.rerun()
