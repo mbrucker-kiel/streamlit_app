@@ -12,6 +12,7 @@ from .results_loaders import (
     get_symptom_onset,
 )
 from .vitals_loaders import get_vitals
+from .holiday_loaders import get_holidays
 
 # Registry
 LOADERS = {
@@ -41,4 +42,5 @@ LOADERS = {
     "Pupillenstatus": get_pupil_status,
     "ETÜ": get_etu,
     "EVM": get_evm,
+    "Feiertage": get_holidays,
 }

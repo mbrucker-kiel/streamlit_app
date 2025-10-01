@@ -77,14 +77,14 @@ def data_loading(
     # If year filter is provided, get the protocol IDs for that year range
     if year_filter:
         start_year, end_year = year_filter
-        _, protocol_ids = cached_year_filter(start_year, end_year, 100000)
+        _, protocol_ids = cached_year_filter(start_year, end_year, 500000)
 
         if not protocol_ids:
             # Return empty DataFrame if no protocols found for the year range
             return pd.DataFrame()
 
         # Get data for the filtered protocol IDs
-        return cached_db_query(metric, 100000, med_name, protocol_ids)
+        return cached_db_query(metric, 500000, med_name, protocol_ids)
 
     # If no year filter, proceed with normal data loading
-    return cached_db_query(metric, 100000, med_name)
+    return cached_db_query(metric, 500000, med_name)
