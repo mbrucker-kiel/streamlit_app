@@ -21,13 +21,13 @@ VEHICLE_SCHEDULES = {}
 for config in VEHICLE_CONFIG.split(","):
     if ":" in config:
         vehicle, hours = config.split(":", 1)
-        VEHICLE_SCHEDULES[vehicle.strip()] = int(hours.strip())
+        VEHICLE_SCHEDULES[f"Ret SL {vehicle.strip()}"] = int(hours.strip())
 
 st.markdown(
     """
 # 🚑 S-KTW ETÜ Analyse
 
-Dieses Dashboard analysiert die ETÜ-Daten für S-KTWs (Spezial-Krankentransportwagen).
+Dieses Dashboard analysiert die ETÜ-Daten für S-KTWs (Sofort-Krankentransportwagen).
 """
 )
 
@@ -129,10 +129,9 @@ if selected_vehicles and not filtered_df.empty:
                 valid_missions["EINSATZENDE"] - valid_missions["EINSATZBEGINN"]
             ).dt.total_seconds() / 3600
 
-            # Filter out negative or unrealistic durations (missions longer than 24 hours are likely errors)
+            # Filter out negative or unrealistic durations 
             valid_missions = valid_missions[
-                (valid_missions["mission_duration_hours"] > 0)
-                & (valid_missions["mission_duration_hours"] <= 24)
+                valid_missions["mission_duration_hours"] > 0
             ]
 
             # Add weekday information
@@ -318,6 +317,9 @@ if selected_vehicles and not filtered_df.empty:
 else:
     st.info("Wählen Sie Fahrzeuge aus, um die Auslastungsanalyse zu sehen.")
 
+wochenfeiertage = data_loading("Feiertage", limit=3)
+
+st.dataframe(wochenfeiertage)
 
 st.subheader("Einsatzstichworte")
 
@@ -473,6 +475,25 @@ if selected_vehicles:
                 key=f"color_{vehicle}",
             )
 
+
+st.dataframe(filtered_df)
+# create filter for CEDUS_CODE
+if "CEDUS_CODE" in filtered_df.columns:
+    cedus_codes = sorted(filtered_df["CEDUS_CODE"].dropna().unique())
+    selected_cedus = st.multiselect(
+        "CEDUS_CODE filtern (optional)",
+        options=cedus_codes,
+        default=[],
+        key="cedus_filter",
+    )
+
+    if selected_cedus:
+        filtered_df = filtered_df[filtered_df["CEDUS_CODE"].isin(selected_cedus)]
+        st.write(f"Gefilterte ETÜ-Daten nach CEDUS_CODE: {len(filtered_df)} Einträge")
+else:
+    st.warning("CEDUS_CODE Spalte nicht gefunden - verwende alle Daten")
+
+
 # Geo-Mapping section using filtered data (only selected vehicles)
 if not filtered_df.empty and selected_vehicles:
     # Check for coordinate columns
@@ -507,6 +528,7 @@ if not filtered_df.empty and selected_vehicles:
                 try:
                     import folium
                     from streamlit_folium import st_folium
+                    from folium.features import DivIcon
 
                     # Debug: Show unique vehicle names
                     unique_vehicles = geo_valid_df["EINSATZMITTEL"].unique()
@@ -523,33 +545,67 @@ if not filtered_df.empty and selected_vehicles:
                         vehicle = str(row["EINSATZMITTEL"])
                         color = color_map.get(
                             vehicle, "red"
-                        )  # Use user-defined colors, default to red for unknown vehicles
+                        )  # Use user-defined colors, default to red
 
+                        # Get status for marker shape differentiation
+                        status = str(row.get("STATUS_BEI_ALARMIERUNG", "Unknown"))
+                        
                         # Create popup with protocol ID and other details
                         popup_text = f"""
                         <b>Fahrzeug:</b> {vehicle}<br>
                         <b>AUFTRAGS_NR:</b> {row.get('AUFTRAGS_NR')}<br>
                         <b>Datum</b> {row.get('EINSATZDATUM', 'N/A')}<br>
                         <b>Stichwort</b> {row.get('SZENARIO_BEGINN', 'N/A')}<br>
+                        <b>CDUS_CODE:</b> {row.get('CEDUS_CODE', 'N/A')}<br>
                         <b>Lat:</b> {row['latitude']:.4f}<br>
                         <b>Lon:</b> {row['longitude']:.4f}
                         """
-
-                        folium.CircleMarker(
-                            location=[row["latitude"], row["longitude"]],
-                            radius=5,
-                            color=color,
-                            fill=True,
-                            fill_color=color,
-                            fill_opacity=0.9,
-                            popup=popup_text,
-                            tooltip=f"{vehicle} - {row.get('SZENARIO_BEGINN', 'N/A')}",
-                        ).add_to(m)
+                        
+                        # Define marker shapes based on status
+                        if status == "1 Einsatzbereit Funk":  # triangle marker
+                            # Create a triangle div icon using CSS borders
+                            icon_html = (
+                                f'<div style="width: 0; height: 0; '
+                                f'border-left: 8px solid transparent; '
+                                f'border-right: 8px solid transparent; '
+                                f'border-bottom: 16px solid {color};"></div>'
+                            )
+                            icon = DivIcon(html=icon_html)
+                            marker = folium.Marker(
+                                location=[row["latitude"], row["longitude"]],
+                                icon=icon,
+                                popup=popup_text,
+                                tooltip=f"{vehicle} - {status}",
+                            )
+                        elif status == "2 Einsatzbereit Wache":  # circle marker
+                            marker = folium.CircleMarker(
+                                location=[row["latitude"], row["longitude"]],
+                                radius=6,
+                                color=color,
+                                fill=True,
+                                fill_color=color,
+                                fill_opacity=0.9,
+                                popup=popup_text,
+                                tooltip=f"{vehicle} - {status}",
+                            )
+                        else:  # Default to smaller circle for other statuses
+                            marker = folium.CircleMarker(
+                                location=[row["latitude"], row["longitude"]],
+                                radius=4,
+                                color=color,
+                                fill=True,
+                                fill_color=color,
+                                fill_opacity=0.9,
+                                popup=popup_text,
+                                tooltip=f"{vehicle} - {status}",
+                            )
+                        
+                        marker.add_to(m)
 
                     # Create dynamic legend based on user color selections
                     legend_html = """
                     <div style="position: fixed; 
-                                bottom: 50px; left: 50px; width: 200px; height: auto; 
+                                bottom: 5px; left: 5px; width: 200px; height: auto; 
                                 background-color: white; border: 2px solid grey; z-index: 9999; 
                                 font-size: 12px; padding: 10px; border-radius: 5px; color: black;">
                         <div style="font-weight: bold; margin-bottom: 8px; color: black;">Fahrzeug-Farben:</div>
@@ -565,11 +621,28 @@ if not filtered_df.empty and selected_vehicles:
                         </div>
                         """
 
+                    # Add status/shape legend
+                    legend_html += """
+                        <div style="font-weight: bold; margin-top: 12px; margin-bottom: 8px; color: black;">Status bei Alarmierung:</div>
+                        <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                            <div style="width: 12px; height: 12px; background-color: gray; border-radius: 50%; margin-right: 8px;"></div>
+                            <span style="color: black;">2 Einsatzbereit Wache</span>
+                        </div>
+                        <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                            <div style="width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 16px solid gray; margin-right: 8px;"></div>
+                            <span style="color: black;">1 Einsatzbereit Funk</span>
+                        </div>
+                        <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                            <div style="width: 8px; height: 8px; background-color: gray; border-radius: 50%; margin-right: 8px;"></div>
+                            <span style="color: black;">Andere Status</span>
+                        </div>
+                    """
+
                     legend_html += "</div>"
                     m.get_root().html.add_child(folium.Element(legend_html))
 
                     # Display the map - PREVENT RERUNS when zooming/panning
-                    st_folium(m, width=700, height=500, returned_objects=[])
+                    st_folium(m, height=800, returned_objects=[], use_container_width=True)
                     st.write(
                         f"**Einsatzorte auf Karte:** {len(geo_valid_df)} Punkte angezeigt"
                     )
