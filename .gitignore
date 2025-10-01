@@ -3,3 +3,4 @@ data/stroke_merged.csv
 .env
 config.yaml
 httpsCerts/
+pages/toBeDone/evmAuswertungen.py
