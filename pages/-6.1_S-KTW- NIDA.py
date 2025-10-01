@@ -26,7 +26,7 @@ st.markdown(
     """
 # 🚑 S-KTW Auslastung
 
-Dieses Dashboard analysiert die Auslastung von S-KTWs (Spezial-Krankentransportwagen).
+Dieses Dashboard analysiert die Auslastung von S-KTWs (Sofort-Krankentransportwagen).
 
 ## Berechnung der Auslastung
 Für die Analyse der Auslastung wird die Zeit zwischen **StatusAlarm** und **StatusEnd** der NIDA-Protokolle verwendet.
@@ -36,8 +36,8 @@ Um die Auslastung korrekt zu berechnen, wird die Verfügbarkeit in Stunden durch
 
 
 # Load data
-index_df = data_loading("Index", limit=50001)
-details_df = data_loading("Details", limit=25004)
+index_df = data_loading("Index")
+details_df = data_loading("Details")
 
 # Merge dataframes on protocolId
 if not details_df.empty and not index_df.empty:
@@ -399,10 +399,10 @@ if "callSign" in merged_df.columns and "missionType" in merged_df.columns:
             callsign_str = str(callsign)
             if "-83-" in callsign_str:
                 return "RTW"
-            elif "-85-" in callsign_str:
+            elif "-85-1" in callsign_str:
                 return "S-KTW"
             else:
-                return "Andere"
+                return callsign_str
 
         sktw_missions["vehicle_type"] = sktw_missions["callSign"].apply(
             classify_vehicle_type
@@ -479,8 +479,19 @@ st.subheader("Hypothesentests")
 
 st.write("Durch die Einführung von S-KTW werden Notfallsanitäter auf RTW häufiger (in Relation zu ihrer Arbeitszeit) mit erweiterten Versorgungsmaßnehmen (EVM) beaufschlagt.")
 
+# steps to do this:
+# check if nida_index["evmCount"] > 0
+# protocols_details -> driverId, driverNumber  ,driverQualification
+# details -> codriverId, codriverNumber,codriverQualification
+# details -> vehicleType
+# matching nida_measures value_11 == "EVM" 
+# get the driverNumber from measures value_10
+# calculate evm per vehicleType and co/driver
+# calculate working hours per vehicleType co/driver
+# -> evm per 100 working hours for RTW and S-KTW
+
 # Load EVM data
-evm_df = data_loading("EVM", limit=20002)
+evm_df = data_loading("EVM")
 
 # Filter protocols with EVM count > 0
 evm_protocols = index_df[index_df["evmCount"] >= 0]["protocolId"].unique()
@@ -582,6 +593,109 @@ if not rtw_evm.empty and not sktw_evm.empty and "description" in rtw_evm.columns
 
 
 st.dataframe(evm_with_vehicle)
+
+# EVM Time Series Analysis: Trends and Seasonal Patterns
+st.subheader("📈 EVM Zeitreihenanalyse: Trends und saisonale Muster")
+
+if "missionDate" in merged_df.columns:
+    # Create time series data for EVM analysis
+    mission_dates = merged_df["missionDate"]
+    if mission_dates.dt.tz is not None:
+        mission_dates = mission_dates.dt.tz_localize(None)
+
+    # Get EVM protocols
+    evm_protocols_all = index_df[index_df["evmCount"] > 0]["protocolId"].unique()
+
+    # Filter merged_df to include only EVM protocols
+    evm_time_df = merged_df[merged_df["protocolId"].isin(evm_protocols_all)].copy()
+
+    # Add vehicle type classification
+    evm_time_df["vehicleType"] = evm_time_df["callSign"].apply(classify_vehicle_type)
+
+    # Extract time components
+    evm_time_df["year"] = evm_time_df["missionDate"].dt.year
+    evm_time_df["month"] = evm_time_df["missionDate"].dt.month
+    evm_time_df["year_month"] = evm_time_df["missionDate"].dt.to_period("M").astype(str)
+
+    # Group by time periods and vehicle type
+    monthly_evm = evm_time_df.groupby(["year_month", "vehicleType"]).size().reset_index(name="evm_count")
+    monthly_total = merged_df.groupby(merged_df["missionDate"].dt.to_period("M").astype(str))["protocolId"].count().reset_index(name="total_missions")
+    monthly_evm = monthly_evm.merge(monthly_total, left_on="year_month", right_on="missionDate", how="left")
+    monthly_evm["evm_percentage"] = (monthly_evm["evm_count"] / monthly_evm["total_missions"] * 100)
+
+
+    fig_monthly = px.line(
+        monthly_evm,
+        x="year_month",
+        y="evm_percentage",
+        color="vehicleType",
+        title="Monatliche EVM-Rate Entwicklung",
+        labels={"evm_percentage": "EVM-Rate (%)", "year_month": "Monat", "vehicleType": "Fahrzeugtyp"}
+    )
+    fig_monthly.update_xaxes(tickangle=45)
+    st.plotly_chart(fig_monthly)
+
+    # Seasonal analysis
+    st.write("### Saisonale Analyse")
+
+    # Add month names for better readability
+    monthly_evm["month_name"] = monthly_evm["year_month"].str[-2:].astype(int).map({
+        1: "Januar", 2: "Februar", 3: "März", 4: "April", 5: "Mai", 6: "Juni",
+        7: "Juli", 8: "August", 9: "September", 10: "Oktober", 11: "November", 12: "Dezember"
+    })
+
+    # Seasonal box plot
+    fig_seasonal = px.box(
+        monthly_evm,
+        x="month_name",
+        y="evm_percentage",
+        color="vehicleType",
+        title="Saisonale EVM-Rate Verteilung nach Monaten",
+        labels={"evm_percentage": "EVM-Rate (%)", "month_name": "Monat", "vehicleType": "Fahrzeugtyp"},
+        category_orders={"month_name": ["Januar", "Februar", "März", "April", "Mai", "Juni",
+                                       "Juli", "August", "September", "Oktober", "November", "Dezember"]}
+    )
+    fig_seasonal.update_xaxes(tickangle=45)
+    st.plotly_chart(fig_seasonal)
+
+
+st.write("werden EVMs von NEF's über den 'Maßnahmen' Tab im Nida-Tablet dokumentiert? die geringe Anzahl ist Auffällig")
+
+
+
+
+
+# st.subheader("interrupted time series analysis")
+# st.write("https://en.wikipedia.org/wiki/Interrupted_time_series")
+# st.write("vergleich mit anderer stichprobe möglich? ggf. vergleich der s-ktw 'Einsatzballungsgebiete' mit den weiterhin normalen?")
+
+# st.dataframe(monthly_evm)
+
+# intervention_date = st.date_input(
+#     "Select Intervention Date",
+#     value=pd.to_Datetime("2025-01"),
+#     key="intervention_date"
+# )
+
+# import arviz as az
+# import matplotlib.dates as mdates
+# import matplotlib.pyplot as plt
+# import numpy as np
+# import pandas as pd
+# import pymc as pm
+# import xarray as xr
+
+# from scipy.stats import norm
+
+# pre = monthly_evm["year_month"] < intervention_date
+# post = monthly_evm["year_month"] > intervention_date
+
+# fig, ax = plt.subplots()
+# ax = pre["evm_count"].plot(lable="pre")
+# post["evm_count"].plot(ac=ax, label="post")
+# ax-axvline(intervention_date,c="k",ls=":")
+# plt.legend();
+
 
 
 # st.markdown("""
