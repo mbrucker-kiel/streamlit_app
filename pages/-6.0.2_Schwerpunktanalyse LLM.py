@@ -6,6 +6,10 @@ from data_loading import data_loading
 
 from auth import check_authentication
 
+if not check_authentication():
+    st.warning("Bitte melden Sie sich an, um auf diese Seite zuzugreifen.")
+    st.stop()
+
 import os
 
 # LLM Configuration
