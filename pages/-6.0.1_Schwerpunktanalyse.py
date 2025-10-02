@@ -848,3 +848,8 @@ if not ktw_anamnesis_df.empty:
 
 else:
     st.warning("Keine KTW-Anamnesis-Daten für die Analyse verfügbar.")
+
+
+
+st.subheader("Anamnesetext ")
+st.dataframe(anamnesis_df[anamnesis_df["protocolId"].isin(filtered_df["protocolId"])])
