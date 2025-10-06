@@ -311,6 +311,9 @@ if "StatusAlarm" in filtered_df.columns and not filtered_df.empty:
         heatmap_data = heatmap_data.pivot(
             index="weekday", columns="hour", values="counts"
         ).fillna(0)
+        # Ensure all hours from 0 to 23 are included
+        all_hours = list(range(24))
+        heatmap_data = heatmap_data.reindex(columns=all_hours, fill_value=0)
         # Reorder weekdays
         weekdays_order = [
             "Monday",
