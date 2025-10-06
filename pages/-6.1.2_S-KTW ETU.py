@@ -476,7 +476,27 @@ if selected_vehicles:
             )
 
 
-st.dataframe(filtered_df)
+# create filter for STATUS_BEI_ALARMIERUNG
+if "STATUS_BEI_ALARMIERUNG" in filtered_df.columns:
+    status_options = sorted(filtered_df["STATUS_BEI_ALARMIERUNG"].dropna().unique())
+    selected_status = st.multiselect(
+        "STATUS_BEI_ALARMIERUNG filtern (optional)",
+        options=status_options,
+        default=[],
+        key="status_filter",
+    )
+
+    if selected_status:
+        filtered_df = filtered_df[
+            filtered_df["STATUS_BEI_ALARMIERUNG"].isin(selected_status)
+        ]
+        st.write(
+            "Gefilterte ETÜ-Daten nach STATUS_BEI_ALARMIERUNG: "
+            f"{len(filtered_df)} Einträge"
+        )
+else:
+    st.warning("STATUS_BEI_ALARMIERUNG Spalte nicht gefunden - verwende alle Daten")
+
 # create filter for CEDUS_CODE
 if "CEDUS_CODE" in filtered_df.columns:
     cedus_codes = sorted(filtered_df["CEDUS_CODE"].dropna().unique())
@@ -523,7 +543,6 @@ if not filtered_df.empty and selected_vehicles:
 
                 # Use folium for colored map based on vehicle type
                 st.subheader("🗺️ Karte der Einsatzorte")
-                st.write("Konvertierte Koordinaten aus UTM Zone 32N nach WGS84")
 
                 try:
                     import folium
@@ -588,14 +607,16 @@ if not filtered_df.empty and selected_vehicles:
                                 popup=popup_text,
                                 tooltip=f"{vehicle} - {status}",
                             )
-                        else:  # Default to smaller circle for other statuses
-                            marker = folium.CircleMarker(
+                        else:  # Default to rectangle marker for other statuses
+                            # Create a rectangle div icon
+                            icon_html = (
+                                '<div style="width: 12px; height: 8px; '
+                                f'background-color: {color}; border: 1px solid black;"></div>'
+                            )
+                            icon = DivIcon(html=icon_html)
+                            marker = folium.Marker(
                                 location=[row["latitude"], row["longitude"]],
-                                radius=4,
-                                color=color,
-                                fill=True,
-                                fill_color=color,
-                                fill_opacity=0.9,
+                                icon=icon,
                                 popup=popup_text,
                                 tooltip=f"{vehicle} - {status}",
                             )
@@ -633,8 +654,9 @@ if not filtered_df.empty and selected_vehicles:
                             <span style="color: black;">1 Einsatzbereit Funk</span>
                         </div>
                         <div style="display: flex; align-items: center; margin-bottom: 4px;">
-                            <div style="width: 8px; height: 8px; background-color: gray; border-radius: 50%; margin-right: 8px;"></div>
-                            <span style="color: black;">Andere Status</span>
+                            <div style="width: 12px; height: 8px; background-color: gray;
+                                        border: 1px solid black; margin-right: 8px;"></div>
+                            <span>Andere Status</span>
                         </div>
                     """
 
