@@ -52,6 +52,25 @@ else:
     merged_df = index_df if not index_df.empty else details_df
     st.write("One of the dataframes is empty, using the non-empty one")
 
+
+# Add vehicle type classification to merged_df
+def classify_vehicle_type(callsign):
+    if pd.isna(callsign):
+        return "Unbekannt"
+    callsign_str = str(callsign)
+    if "-83-" in callsign_str:
+        return "RTW"
+    elif "-85-" in callsign_str:
+        return "S-KTW"
+    else:
+        return callsign_str
+
+
+merged_df["vehicleType"] = merged_df["callSign"].apply(classify_vehicle_type)
+
+
+# Filter für Einsatzdatum Intervall
+
 # Filter für Einsatzdatum Intervall
 st.date_input(
     "Einsatzdatum von-bis",
@@ -301,7 +320,34 @@ else:
 
 # Display Einsätze per Weekday and hour of day
 st.subheader("Einsätze nach Wochentag und Uhrzeit")
-if "StatusAlarm" in filtered_df.columns and not filtered_df.empty:
+
+# Mission type filter for this section only
+st.write("**Filter für diese Sektion:** Mission Types (Dienstfahrt default ausgeschlossen)")
+if "missionType" in filtered_df.columns:
+    available_mission_types = sorted(filtered_df["missionType"].dropna().unique())
+    # Default selection excludes "dienstfahrt"
+    default_selected = [
+        mt for mt in available_mission_types
+        if "dienstfahrt" not in str(mt).lower()
+    ]
+    selected_mission_types = st.multiselect(
+        "Mission Types für Heatmap filtern",
+        options=available_mission_types,
+        default=default_selected,  # Exclude Dienstfahrt by default
+        key="heatmap_mission_filter"
+    )
+
+    if selected_mission_types:
+        heatmap_df = filtered_df[
+            filtered_df["missionType"].isin(selected_mission_types)
+        ].copy()
+    else:
+        heatmap_df = filtered_df.copy()
+        st.info("Alle Mission Types verwendet.")
+else:
+    heatmap_df = filtered_df.copy()
+
+if "StatusAlarm" in heatmap_df.columns and not heatmap_df.empty:
     filtered_df["weekday"] = filtered_df["StatusAlarm"].dt.day_name()
     filtered_df["hour"] = filtered_df["StatusAlarm"].dt.hour
     heatmap_data = (
@@ -396,17 +442,6 @@ if "callSign" in merged_df.columns and "missionType" in merged_df.columns:
 
     if not sktw_missions.empty:
         # Classify vehicle types based on callSign pattern
-        def classify_vehicle_type(callsign):
-            if pd.isna(callsign):
-                return "Unbekannt"
-            callsign_str = str(callsign)
-            if "-83-" in callsign_str:
-                return "RTW"
-            elif "-85-1" in callsign_str:
-                return "S-KTW"
-            else:
-                return callsign_str
-
         sktw_missions["vehicle_type"] = sktw_missions["callSign"].apply(
             classify_vehicle_type
         )
@@ -482,239 +517,4 @@ st.subheader("Hypothesentests")
 
 st.write("Durch die Einführung von S-KTW werden Notfallsanitäter auf RTW häufiger (in Relation zu ihrer Arbeitszeit) mit erweiterten Versorgungsmaßnehmen (EVM) beaufschlagt.")
 
-# steps to do this:
-# check if nida_index["evmCount"] > 0
-# protocols_details -> driverId, driverNumber  ,driverQualification
-# details -> codriverId, codriverNumber,codriverQualification
-# details -> vehicleType
-# matching nida_measures value_11 == "EVM" 
-# get the driverNumber from measures value_10
-# calculate evm per vehicleType and co/driver
-# calculate working hours per vehicleType co/driver
-# -> evm per 100 working hours for RTW and S-KTW
-
-# Load EVM data
-evm_df = data_loading("EVM")
-
-# Filter protocols with EVM count > 0
-evm_protocols = index_df[index_df["evmCount"] >= 0]["protocolId"].unique()
-
-# Filter merged_df to EVM protocols with date range filtering (but no vehicle selection)
-# Apply the same date filtering as used for filtered_df
-if "missionDate" in merged_df.columns:
-    mission_dates = merged_df["missionDate"]
-    if mission_dates.dt.tz is not None:
-        mission_dates = mission_dates.dt.tz_localize(None)
-
-    date_filtered_df = merged_df[
-        (mission_dates >= start_dt) & (mission_dates <= end_dt)
-    ].copy()
-    
-    # Also filter on alarmTime using the same date range
-    if "alarmTime" in date_filtered_df.columns:
-        alarm_times = pd.to_datetime(date_filtered_df["alarmTime"], errors="coerce")
-        if alarm_times.dt.tz is not None:
-            alarm_times = alarm_times.dt.tz_localize(None)
-        date_filtered_df = date_filtered_df[
-            (alarm_times >= start_dt) & (alarm_times <= end_dt)
-        ].copy()
-else:
-    date_filtered_df = merged_df.copy()
-
-evm_merged_df = date_filtered_df[date_filtered_df["protocolId"].isin(evm_protocols)].copy()
-
-
-evm_merged_df["vehicleType"] = evm_merged_df["callSign"].apply(classify_vehicle_type)
-
-# Differences in descriptions between RTW and S-KTW
-evm_with_vehicle = evm_df.merge(evm_merged_df[["protocolId", "vehicleType"]], on="protocolId", how="left")
-rtw_evm = evm_with_vehicle[evm_with_vehicle["vehicleType"] == "RTW"]
-sktw_evm = evm_with_vehicle[evm_with_vehicle["vehicleType"] == "S-KTW"]
-
-# Combined comparison chart
-if not rtw_evm.empty and not sktw_evm.empty and "description" in rtw_evm.columns and "description" in sktw_evm.columns:
-    st.subheader("Vergleich EVM Beschreibungen: RTW vs S-KTW")
-    st.write("RTW Percentage = (Count of EVM description / Total RTW missions) × 100")
-    st.write("SKTW Percentage = (Count of EVM description / Total S-KTW missions) × 100")
-    # Get description counts for both vehicle types
-    rtw_desc_counts = rtw_evm["description"].value_counts().reset_index()
-    rtw_desc_counts.columns = ["Description", "Count"]
-    
-    sktw_desc_counts = sktw_evm["description"].value_counts().reset_index()
-    sktw_desc_counts.columns = ["Description", "Count"]
-    
-    # Get top descriptions from both
-    rtw_top = rtw_desc_counts.head(15).copy()
-    rtw_top["vehicleType"] = "RTW"
-    
-    sktw_top = sktw_desc_counts.head(15).copy()
-    sktw_top["vehicleType"] = "S-KTW"
-    
-    # Combine
-    combined_desc = pd.concat([rtw_top, sktw_top], ignore_index=True)
-    
-    # Create combined bar chart
-    fig_combined = px.bar(
-        combined_desc, 
-        x="Description", 
-        y="Count", 
-        color="vehicleType",
-        title="EVM Beschreibungen Vergleich: RTW vs S-KTW (Absolut)",
-        barmode="group",
-        labels={"Count": "Anzahl", "Description": "Beschreibung", "vehicleType": "Fahrzeugtyp"}
-    )
-    fig_combined.update_layout(xaxis_tickangle=-45)
-    st.plotly_chart(fig_combined)
-    
-    # Alternative: Percentage view (percentage of ALL missions that have this EVM type)
-    # Get total missions for each vehicle type in the date range
-    total_rtw_missions = date_filtered_df[date_filtered_df["callSign"].apply(
-        lambda x: str(x) if pd.notna(x) else ""
-    ).str.contains("-83-", na=False)].shape[0]
-    
-    total_sktw_missions = date_filtered_df[date_filtered_df["callSign"].apply(
-        lambda x: str(x) if pd.notna(x) else ""
-    ).str.contains("-85-", na=False)].shape[0]
-    
-    combined_desc["Percentage"] = combined_desc.apply(
-        lambda row: (row["Count"] / total_rtw_missions * 100) if row["vehicleType"] == "RTW"
-                    else (row["Count"] / total_sktw_missions * 100), 
-        axis=1
-    )
-    
-    fig_percent = px.bar(
-        combined_desc, 
-        x="Description", 
-        y="Percentage", 
-        color="vehicleType",
-        title="EVM Beschreibungen Vergleich: RTW vs S-KTW (Prozentual)",
-        barmode="group",
-        labels={"Percentage": "Prozent (%)", "Description": "Beschreibung", "vehicleType": "Fahrzeugtyp"}
-    )
-    fig_percent.update_layout(xaxis_tickangle=-45)
-    st.plotly_chart(fig_percent)
-
-
-st.dataframe(evm_with_vehicle)
-
-# EVM Time Series Analysis: Trends and Seasonal Patterns
-st.subheader("📈 EVM Zeitreihenanalyse: Trends und saisonale Muster")
-
-if "missionDate" in merged_df.columns:
-    # Create time series data for EVM analysis
-    mission_dates = merged_df["missionDate"]
-    if mission_dates.dt.tz is not None:
-        mission_dates = mission_dates.dt.tz_localize(None)
-
-    # Get EVM protocols
-    evm_protocols_all = index_df[index_df["evmCount"] > 0]["protocolId"].unique()
-
-    # Filter merged_df to include only EVM protocols
-    evm_time_df = merged_df[merged_df["protocolId"].isin(evm_protocols_all)].copy()
-
-    # Add vehicle type classification
-    evm_time_df["vehicleType"] = evm_time_df["callSign"].apply(classify_vehicle_type)
-
-    # Extract time components
-    evm_time_df["year"] = evm_time_df["missionDate"].dt.year
-    evm_time_df["month"] = evm_time_df["missionDate"].dt.month
-    evm_time_df["year_month"] = evm_time_df["missionDate"].dt.to_period("M").astype(str)
-
-    # Group by time periods and vehicle type
-    monthly_evm = evm_time_df.groupby(["year_month", "vehicleType"]).size().reset_index(name="evm_count")
-    monthly_total = merged_df.groupby(merged_df["missionDate"].dt.to_period("M").astype(str))["protocolId"].count().reset_index(name="total_missions")
-    monthly_evm = monthly_evm.merge(monthly_total, left_on="year_month", right_on="missionDate", how="left")
-    monthly_evm["evm_percentage"] = (monthly_evm["evm_count"] / monthly_evm["total_missions"] * 100)
-
-
-    fig_monthly = px.line(
-        monthly_evm,
-        x="year_month",
-        y="evm_percentage",
-        color="vehicleType",
-        title="Monatliche EVM-Rate Entwicklung",
-        labels={"evm_percentage": "EVM-Rate (%)", "year_month": "Monat", "vehicleType": "Fahrzeugtyp"}
-    )
-    fig_monthly.update_xaxes(tickangle=45)
-    st.plotly_chart(fig_monthly)
-
-    # Seasonal analysis
-    st.write("### Saisonale Analyse")
-
-    # Add month names for better readability
-    monthly_evm["month_name"] = monthly_evm["year_month"].str[-2:].astype(int).map({
-        1: "Januar", 2: "Februar", 3: "März", 4: "April", 5: "Mai", 6: "Juni",
-        7: "Juli", 8: "August", 9: "September", 10: "Oktober", 11: "November", 12: "Dezember"
-    })
-
-    # Seasonal box plot
-    fig_seasonal = px.box(
-        monthly_evm,
-        x="month_name",
-        y="evm_percentage",
-        color="vehicleType",
-        title="Saisonale EVM-Rate Verteilung nach Monaten",
-        labels={"evm_percentage": "EVM-Rate (%)", "month_name": "Monat", "vehicleType": "Fahrzeugtyp"},
-        category_orders={"month_name": ["Januar", "Februar", "März", "April", "Mai", "Juni",
-                                       "Juli", "August", "September", "Oktober", "November", "Dezember"]}
-    )
-    fig_seasonal.update_xaxes(tickangle=45)
-    st.plotly_chart(fig_seasonal)
-
-
-st.write("werden EVMs von NEF's über den 'Maßnahmen' Tab im Nida-Tablet dokumentiert? die geringe Anzahl ist Auffällig")
-
-
-
-
-
-# st.subheader("interrupted time series analysis")
-# st.write("https://en.wikipedia.org/wiki/Interrupted_time_series")
-# st.write("vergleich mit anderer stichprobe möglich? ggf. vergleich der s-ktw 'Einsatzballungsgebiete' mit den weiterhin normalen?")
-
-# st.dataframe(monthly_evm)
-
-# intervention_date = st.date_input(
-#     "Select Intervention Date",
-#     value=pd.to_Datetime("2025-01"),
-#     key="intervention_date"
-# )
-
-# import arviz as az
-# import matplotlib.dates as mdates
-# import matplotlib.pyplot as plt
-# import numpy as np
-# import pandas as pd
-# import pymc as pm
-# import xarray as xr
-
-# from scipy.stats import norm
-
-# pre = monthly_evm["year_month"] < intervention_date
-# post = monthly_evm["year_month"] > intervention_date
-
-# fig, ax = plt.subplots()
-# ax = pre["evm_count"].plot(lable="pre")
-# post["evm_count"].plot(ac=ax, label="post")
-# ax-axvline(intervention_date,c="k",ls=":")
-# plt.legend();
-
-
-
-# st.markdown("""
-#             S-KTW entlastet RTW ohne relevante Qualitätsnachteile
-#             Metriken: Notarzt-Nachforderungen, Sonderrechtsfahrt zum Transportziel, 2.0 bis 3.3 der AG Indikatoren für S-RTW vs RTW"""
-#             )
-
-# sonderrechtsfahrten in details_df[content.flashingLights] "ja" or "nein" and details_df[content.transportFlashingLights
-# # results_df = data_loading("NA-Nachforderung") where protocols_results[content..value_1 == "Nachforderung NA" "ja"/"nein"] # must be implemented in results_loaders
-
-
-# S-KTW übernimmt niedrigere Dringlichkeitslagen effizienter als RTW (geringere Kosten)
-# Metriken: Einsatz- bzw. Zykluszeit, Auslastung; Qualifikation/Mix des Personals auf S-KTW
-
-# # qualifikationen in details_df[content.driverQualification] and details_df[content.codriverQualification]
-
-
-# Sonderrechtsfahrten sind bei S-KTW seltener und zielgerichtet – ohne negative Wirkung auf das Transportintervall
-# Metriken: Sonderrechts‑Indikationsprüfung
+st.write("**Hinweis:** Die detaillierte EVM-Analyse wurde in die separate Seite '6.2 EVM Analyse' verschoben.")
