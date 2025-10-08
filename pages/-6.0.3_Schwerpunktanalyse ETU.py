@@ -28,6 +28,8 @@ color_brighter = ["#a8c0f0", "#ffd966", "#ffff99", "#b6d7a8", "#8a4fbf"]
 color_darker = ["#6d8ac9", "#e6b800", "#e6e600", "#6aa84f", "#4a1d6a"]
 
 etu_df = data_loading("ETÜ")
+index_df = data_loading("Index")
+
 
 # filter for patient address use env variables as placeholders
 with st.expander("Filteroptionen"):
@@ -59,6 +61,13 @@ with st.expander("Filteroptionen"):
         temp_filtered["EO_STRASSE_ZUSATZ"].dropna().unique()
     )
     st.selectbox("Hausnummer", options=house_options, key="house_number_filter")
+
+    # Patient Lastname filter with "Alle" option
+    # Get patient lastnames from Index data
+    patient_lastname_options = ["Alle"] + list(
+        index_df["patientLastname"].dropna().unique()
+    )
+    st.selectbox("Patient Nachname", options=patient_lastname_options, key="patient_lastname_filter")
 
 filtered_df = etu_df
 
@@ -104,12 +113,15 @@ mask = (filtered_df["EINSATZBEGINN"] >= start_date_utc) & (
 )
 filtered_df = filtered_df.loc[mask]
 
-# Load Index data and merge
-index_df = data_loading("Index", limit=50000)
-
 merged_df = pd.merge(
     filtered_df, index_df, left_on="EINSATZ_NR", right_on="missionNumber", how="left"
 )
+
+# Apply patient lastname filter after merge
+if st.session_state["patient_lastname_filter"] != "Alle":
+    merged_df = merged_df[
+        merged_df["patientLastname"] == st.session_state["patient_lastname_filter"]
+    ]
 
 # i want to display big the total number of filtered_df and display a pie chart with missionType
 
@@ -393,6 +405,9 @@ if "alarmTime" in merged_df.columns:
             heatmap_data = heatmap_data.pivot(
                 index="weekday", columns="hour", values="counts"
             ).fillna(0)
+            # Ensure all hours from 0 to 23 are included
+            all_hours = list(range(24))
+            heatmap_data = heatmap_data.reindex(columns=all_hours, fill_value=0)
             # Reorder weekdays
             weekdays_order = [
                 "Monday",
@@ -455,6 +470,108 @@ if "leadingDiagnosis" in merged_df.columns:
     st.plotly_chart(fig)
 else:
     st.warning("Spalte 'leadingDiagnosis' nicht gefunden im Datensatz.")
+
+# Check merging quality
+st.subheader("Überprüfung der Datenverknüpfung (Index ↔ ETU)")
+st.write(
+    "Aufgrund von mehrfach allamierungen existieren zu einzelnen "
+    "NIDA-Protokollen mehrere ETÜ-Datensätze."
+)
+
+st.write("Merge über NIDA-Protokoll['missionNumber'] und ETÜ['EINSATZ_NR']")
+
+# Show sample of merged data
+st.dataframe(merged_df.head())
+
+total_filtered = len(filtered_df)
+total_index = len(index_df)
+total_merged = len(merged_df)
+# Count unique missions that have Index data
+# (since multiple vehicles can be assigned to same mission)
+matched = merged_df.dropna(subset=["protocolId"])["EINSATZ_NR"].nunique()
+missing_index = total_filtered - matched
+
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    st.metric("Gesamt gefilterte ETÜ-Einsätze", total_filtered)
+with col2:
+    st.metric("Index-Datensätze", total_index)
+with col3:
+    st.metric("Verknüpfte Einsätze", matched)
+with col4:
+    st.metric("Fehlende Index-Daten", missing_index)
+
+if missing_index > 0:
+    st.warning(
+        f"{missing_index} ETÜ-Einsätze konnten nicht mit Index-Daten "
+        "verknüpft werden."
+    )
+
+# Sankey diagram: Flow from ETU CEDUS_CODE to leadingDiagnosis
+st.subheader("Sankey-Diagramm: Von ETU-Diagnose zu endgültiger Diagnose")
+
+# Prepare data for Sankey (only rows with both CEDUS_CODE and leadingDiagnosis)
+sankey_data = merged_df.dropna(subset=["CEDUS_CODE", "leadingDiagnosis"])
+
+if not sankey_data.empty:
+    # Group by CEDUS_CODE and leadingDiagnosis to count flows
+    flow_counts = (
+        sankey_data.groupby(["CEDUS_CODE", "leadingDiagnosis"])
+        .size()
+        .reset_index(name="count")
+    )
+
+    # Create nodes (unique CEDUS_CODE + unique leadingDiagnosis)
+    cedus_codes = flow_counts["CEDUS_CODE"].unique()
+    diagnoses = flow_counts["leadingDiagnosis"].unique()
+    nodes = list(cedus_codes) + list(diagnoses)
+
+    # Create node index mapping
+    node_dict = {node: i for i, node in enumerate(nodes)}
+
+    # Create links
+    links = []
+    for _, row in flow_counts.iterrows():
+        source = node_dict[row["CEDUS_CODE"]]
+        target = node_dict[row["leadingDiagnosis"]]
+        value = row["count"]
+        links.append({"source": source, "target": target, "value": value})
+
+    # Create Sankey diagram
+    fig = go.Figure(
+        data=[
+            go.Sankey(
+                node=dict(
+                    pad=15,
+                    thickness=20,
+                    line=dict(color="black", width=0.5),
+                    label=nodes,
+                ),
+                link=dict(
+                    source=[link["source"] for link in links],
+                    target=[link["target"] for link in links],
+                    value=[link["value"] for link in links],
+                ),
+            )
+        ]
+    )
+
+    fig.update_layout(
+        title_text="Datenfluss: ETU-Diagnose (CEDUS_CODE) → "
+                   "Endgültige Diagnose (leadingDiagnosis)",
+        font_size=10,
+    )
+
+    st.plotly_chart(fig)
+
+    # Display flow counts table
+    st.write("**Detaillierte Flüsse:**")
+    st.dataframe(flow_counts.sort_values("count", ascending=False))
+else:
+    st.warning(
+        "Keine Daten mit sowohl ETU-Diagnose als auch endgültiger "
+        "Diagnose verfügbar für das Sankey-Diagramm."
+    )
 
 # ===== ETÜ-SPEZIFISCHE ANALYSEN =====
 st.subheader("ETÜ-spezifische Analysen")
@@ -535,29 +652,104 @@ if "EINSATZMITTELTYP" in filtered_df.columns:
 else:
     st.warning("Spalte 'EINSATZMITTELTYP' nicht gefunden im ETÜ-Datensatz.")
 
-df_freetext = data_loading("Freetext")
+# Patient Lastname Analysis
+st.subheader("Verteilung der Patientennachnamen")
+if "patientLastname" in merged_df.columns:
+    lastname_counts = merged_df["patientLastname"].value_counts().reset_index()
+    lastname_counts.columns = ["patientLastname", "count"]
 
-# Explode the data array to get individual freetext entries
-if not df_freetext.empty and "data" in df_freetext.columns:
-    df_freetext = df_freetext.explode("data").reset_index(drop=True)
-    # Extract fields from the nested data structure
-    freetext_expanded = pd.json_normalize(df_freetext["data"])
-    # Combine with the original dataframe (excluding the data column and duplicate protocolId)
-    df_freetext = pd.concat(
-        [df_freetext.drop(columns=["data", "protocolId"]), freetext_expanded], axis=1
+    # Group small categories into "Sonstige" after top 15
+    if len(lastname_counts) > 15:
+        # Sort by count descending
+        lastname_counts = lastname_counts.sort_values("count", ascending=False)
+
+        # Keep top 15
+        top_15 = lastname_counts.head(15)
+
+        # Sum the rest into "Sonstige"
+        other_count = lastname_counts.iloc[15:]["count"].sum()
+
+        # Create new dataframe with top 15 + Sonstige
+        if other_count > 0:
+            other_row = pd.DataFrame(
+                {"patientLastname": ["Sonstige"], "count": [other_count]}
+            )
+            lastname_counts = pd.concat([top_15, other_row], ignore_index=True)
+
+    st.write("**Verteilung der Patientennachnamen:**")
+    st.write(lastname_counts)
+
+    fig = px.pie(
+        lastname_counts,
+        names="patientLastname",
+        values="count",
+        title="Verteilung der Patientennachnamen (Top 15 + Sonstige)",
+        color_discrete_sequence=color,
+    )
+    st.plotly_chart(fig)
+else:
+    st.warning("Spalte 'patientLastname' nicht gefunden im Datensatz.")
+
+df_freetext = data_loading("Freetext", limit=500000)
+
+# merge nida_df[protocolId] with etu EINSATZ_NR
+if not filtered_df.empty and not index_df.empty:
+    # Merge ETÜ data with Index data based on mission numbers
+    merged_df = filtered_df.merge(
+        index_df,
+        left_on="EINSATZ_NR",
+        right_on="missionNumber",
+        how="left",
+        suffixes=("_ETÜ", "_Index")
     )
 
-# Filter for anamnesis data (all transports for general analysis)
-anamnesis_df = df_freetext[
-    df_freetext["description"].str.contains("Anamnese", na=False, case=False)
-]
+    # If Freetext data is available, merge it too
+    if not df_freetext.empty:
+        merged_with_freetext = merged_df.merge(
+            df_freetext,
+            left_on="protocolId",
+            right_on="protocolId",
+            how="left",
+            suffixes=("", "_Freetext")
+        )
+else:
+    st.warning("Keine Daten zum Zusammenführen verfügbar")
 
-# Filter anamnesis data to only include protocols from the filtered Krankentransport missions (all transports)
-anamnesis_df = anamnesis_df[anamnesis_df["protocolId"].isin(merged_df["protocolId"])]
+# Display Anamnese data from freetext
+st.subheader("🏥 Anamnesis-Daten")
 
-st.write(
-    f"**Anamnesis-Daten: {len(anamnesis_df)} Protokolle gefunden für die gefilterten Einsätze**"
-)
+if not merged_with_freetext.empty and 'data' in merged_with_freetext.columns:
+    # Extract Anamnese data from the nested data column of MERGED freetext data
+    anamnese_data = []
 
-st.subheader("Anamnesetext ")
-st.dataframe(anamnesis_df[anamnesis_df["protocolId"].isin(merged_df["protocolId"])])
+    for idx, row in merged_with_freetext.iterrows():
+        if row['data'] and isinstance(row['data'], list):
+            for item in row['data']:
+                if isinstance(item, dict) and item.get('description') == 'Anamnese':
+                    # Add protocolId from the row and merge with item data
+                    anamnese_item = {
+                        'protocolId': row.get('protocolId'),
+                        'EINSATZ_NR': row.get('EINSATZ_NR'),
+                        **item
+                    }
+                    anamnese_data.append(anamnese_item)
+
+    if anamnese_data:
+        st.write(f"**Anamnesis-Daten: {len(anamnese_data)} Einträge gefunden**")
+
+        # Convert to DataFrame for display
+        anamnese_df = pd.DataFrame(anamnese_data)
+
+        # Reorder columns to show AUFTRAGS_NR and protocolId first
+        cols = ["EINSATZ_NR", "protocolId"] + [
+            col for col in anamnese_df.columns
+            if col not in ["EINSATZ_NR", "protocolId"]
+        ]
+        anamnese_df = anamnese_df[cols]
+
+        st.dataframe(anamnese_df)
+    else:
+        st.warning("Keine Anamnese-Daten in den gefilterten Einsätzen gefunden")
+else:
+    st.warning("Keine Freetext-Daten verfügbar oder keine Übereinstimmungen gefunden")
+
