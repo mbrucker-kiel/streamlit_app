@@ -22,6 +22,8 @@ def get_holidays(db=None, limit=10000):
             })
 
         df = pd.DataFrame(records)
+        df["date"] = pd.to_datetime(df["date"], errors='coerce')
+        df["weekday"] = df["date"].dt.day_name()
 
         return df
 
