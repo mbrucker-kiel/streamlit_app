@@ -1,13 +1,16 @@
 import pandas as pd
 import datetime
 from typing import Dict, List, Any, Optional
+import os
+from dotenv import load_dotenv
 
-from db_connection import get_mongodb_connection, close_mongodb_connection
 from data_helpers import (
     convert_objectid_to_str,
     combine_date_time_fields,
     process_boolean_fields,
 )
+
+load_dotenv()
 
 
 def get_index(db, filters=None, limit=10000):
@@ -108,8 +111,6 @@ def get_etu(db, filters=None, limit=10000):
         if "etu_leitstelle" not in collection_names:
             return pd.DataFrame()
 
-        collection_count = db.etu_leitstelle.count_documents(query)
-
         docs = list(
             db.etu_leitstelle.find(query).sort("EINSATZBEGINN", -1).limit(limit)
         )
@@ -123,4 +124,65 @@ def get_etu(db, filters=None, limit=10000):
 
     except Exception as e:
         print(f"ERROR in get_etu: {str(e)}")
+        return pd.DataFrame()
+
+
+def get_rtm_vorhaltung(db, filters=None, limit=10000):
+    """
+    Load vehicle availability configuration from MongoDB into a DataFrame.
+
+    Args:
+        db: MongoDB database connection
+        filters: Optional dict to filter (e.g. {"vehicle_type": "NEF"})
+        limit: Max number of documents to retrieve
+
+    Returns:
+        pd.DataFrame with all vehicle configuration fields.
+    """
+
+    query = {}
+    if filters:
+        query.update(filters)
+
+    try:
+        # Check collection exists
+        if "rtm_vorhaltung" not in db.list_collection_names():
+            print("Collection 'vehicles' not found.")
+            return pd.DataFrame()
+
+        # Fetch data
+        docs = list(db.rtm_vorhaltung.find(query).limit(limit))
+
+        if not docs:
+            print("No documents found in 'vehicles' for given filters.")
+            return pd.DataFrame()
+
+        # Convert ObjectId fields if necessary
+        for doc in docs:
+            if "_id" in doc:
+                doc["_id"] = str(doc["_id"])
+
+        # Convert to DataFrame
+        df = pd.DataFrame(docs)
+
+        # Optional: enforce column order / normalization
+        expected_cols = [
+            "_id",
+            "vehicle_identifier",
+            "vehicle_type",
+            "station",
+            "valid_from",
+            "valid_to",
+            "availability",
+            "total_week_hours",
+        ]
+
+        for col in expected_cols:
+            if col not in df.columns:
+                df[col] = None
+
+        return df[expected_cols]
+
+    except Exception as e:
+        print(f"ERROR in get_vehicle_config: {e}")
         return pd.DataFrame()

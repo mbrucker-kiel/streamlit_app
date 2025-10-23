@@ -1,4 +1,10 @@
-from .index_loaders import get_index, get_details, get_freetext, get_etu
+from .index_loaders import (
+    get_index,
+    get_details,
+    get_freetext,
+    get_etu,
+    get_rtm_vorhaltung,
+)
 from .findings_loaders import (
     get_metric_from_findings,
     get_neurological_signs,
@@ -43,4 +49,7 @@ LOADERS = {
     "ETÜ": get_etu,
     "EVM": get_evm,
     "Feiertage": get_holidays,
+    "RTM_Vorhaltung": get_rtm_vorhaltung,
+    "TransportStatusHistory": get_transport_status_history,
 }
+
