@@ -61,7 +61,7 @@ def load_transport_status_data():
     return loaded_df
 
 
-df = load_transport_status_data()
+df = pd.read_csv("data/ktw_sh_transport_status_history.csv")
 
 if df.empty:
     st.error(
