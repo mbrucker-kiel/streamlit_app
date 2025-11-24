@@ -3,13 +3,21 @@ import pandas as pd
 import plotly.express as px
 import os
 from data_loading import data_loading
-from auth import check_authentication
 
-# Authentication check
-if not check_authentication():
-    st.warning("Bitte melden Sie sich an, um auf diese Seite zuzugreifen.")
-    st.stop()
+if not st.user.is_logged_in:
+    st.title("🔐 Authentifizierung erforderlich")
+    st.write(
+        "Diese Seite ist geschützt. Bitte melden Sie sich mit Ihrem Keycloak-Account an."
+    )
 
+    if st.button(
+        "✨ Mit Keycloak anmelden ✨",
+        type="primary",
+        use_container_width=True,
+    ):
+        st.login()
+
+    st.stop()  # Stop execution of the rest of the page
 
 # Load configuration from environment variables
 DEFAULT_NIDA_VEHICLES = os.getenv("DEFAULT_NIDA_SKTW_VEHICLES").split(",")
@@ -322,19 +330,20 @@ else:
 st.subheader("Einsätze nach Wochentag und Uhrzeit")
 
 # Mission type filter for this section only
-st.write("**Filter für diese Sektion:** Mission Types (Dienstfahrt default ausgeschlossen)")
+st.write(
+    "**Filter für diese Sektion:** Mission Types (Dienstfahrt default ausgeschlossen)"
+)
 if "missionType" in filtered_df.columns:
     available_mission_types = sorted(filtered_df["missionType"].dropna().unique())
     # Default selection excludes "dienstfahrt"
     default_selected = [
-        mt for mt in available_mission_types
-        if "dienstfahrt" not in str(mt).lower()
+        mt for mt in available_mission_types if "dienstfahrt" not in str(mt).lower()
     ]
     selected_mission_types = st.multiselect(
         "Mission Types für Heatmap filtern",
         options=available_mission_types,
         default=default_selected,  # Exclude Dienstfahrt by default
-        key="heatmap_mission_filter"
+        key="heatmap_mission_filter",
     )
 
     if selected_mission_types:
@@ -515,6 +524,10 @@ else:
 
 st.subheader("Hypothesentests")
 
-st.write("Durch die Einführung von S-KTW werden Notfallsanitäter auf RTW häufiger (in Relation zu ihrer Arbeitszeit) mit erweiterten Versorgungsmaßnehmen (EVM) beaufschlagt.")
+st.write(
+    "Durch die Einführung von S-KTW werden Notfallsanitäter auf RTW häufiger (in Relation zu ihrer Arbeitszeit) mit erweiterten Versorgungsmaßnehmen (EVM) beaufschlagt."
+)
 
-st.write("**Hinweis:** Die detaillierte EVM-Analyse wurde in die separate Seite '6.2 EVM Analyse' verschoben.")
+st.write(
+    "**Hinweis:** Die detaillierte EVM-Analyse wurde in die separate Seite '6.2 EVM Analyse' verschoben."
+)

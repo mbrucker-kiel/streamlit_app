@@ -175,3 +175,53 @@ def get_evm(db, limit=10000):
         "collection",
     ]
     return df[keep]
+
+
+def get_etu_data(
+    filepath="data/Schleswig-Flensburg_herausgefilterte_Einzeldatensätze(1).csv",
+    limit=10000,
+):
+    """
+    Load ETU (Rettungsleitstelle) data from CSV file with proper encoding.
+
+    Parameters:
+    - filepath: Path to the CSV file containing ETU data
+    - limit: Maximum number of records to return
+
+    Returns:
+    - pd.DataFrame with ETU data
+    """
+    encodings = ["utf-8", "latin1", "iso-8859-1", "cp1252"]
+
+    for encoding in encodings:
+        try:
+            df = pd.read_csv(filepath, encoding=encoding)
+
+            # Limit the number of records
+            if len(df) > limit:
+                df = df.head(limit)
+
+            # Add metadata fields for consistency with other loaders
+            df["source"] = "ETU_CSV"
+            df["collection"] = "etu_data"
+            df["metric"] = "ETU"
+
+            # Try to parse date/time columns if they exist
+            date_keywords = ["datum", "date", "zeit", "time"]
+            date_columns = [
+                col
+                for col in df.columns
+                if any(kw in col.lower() for kw in date_keywords)
+            ]
+            for col in date_columns:
+                try:
+                    df[col] = pd.to_datetime(df[col], errors="coerce")
+                except (ValueError, TypeError):
+                    pass
+
+            return df
+        except (UnicodeDecodeError, FileNotFoundError, pd.errors.ParserError):
+            continue
+
+    # If all encodings fail, return empty DataFrame
+    return pd.DataFrame()

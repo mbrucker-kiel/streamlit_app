@@ -3,9 +3,10 @@ pandas
 plotly
 pymongo
 dotenv
-streamlit_authenticator
 matplotlib
 seaborn
 pyproj
 folium
 streamlit-folium
+psycopg2-binary
+Authlib

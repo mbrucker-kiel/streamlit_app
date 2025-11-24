@@ -3,14 +3,22 @@ import pandas as pd
 from data_loading import data_loading
 import plotly.express as px
 import plotly.graph_objects as go
-from auth import check_authentication
 from data_helpers import analyze_freetext_requirements
 
-# Authentication check
-if not check_authentication():
-    st.warning("Bitte melden Sie sich an, um auf diese Seite zuzugreifen.")
-    st.stop()
+if not st.user.is_logged_in:
+    st.title("🔐 Authentifizierung erforderlich")
+    st.write(
+        "Diese Seite ist geschützt. Bitte melden Sie sich mit Ihrem Keycloak-Account an."
+    )
 
+    if st.button(
+        "✨ Mit Keycloak anmelden ✨",
+        type="primary",
+        use_container_width=True,
+    ):
+        st.login()
+
+    st.stop()  # Stop execution of the rest of the page
 
 st.title("Schwerpunktanalyse")
 
@@ -851,7 +859,6 @@ if not ktw_anamnesis_df.empty:
 
 else:
     st.warning("Keine KTW-Anamnesis-Daten für die Analyse verfügbar.")
-
 
 
 st.subheader("Anamnesetext ")

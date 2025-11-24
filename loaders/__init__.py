@@ -10,7 +10,13 @@ from .findings_loaders import (
     get_neurological_signs,
     get_pupil_status,
 )
-from .measures_loaders import get_medikamente, get_intubation, get_12lead_ecg, get_evm
+from .measures_loaders import (
+    get_medikamente,
+    get_intubation,
+    get_12lead_ecg,
+    get_evm,
+    get_etu_data,
+)
 from .results_loaders import (
     get_metric_from_results,
     get_reanimation,
@@ -48,8 +54,7 @@ LOADERS = {
     "Pupillenstatus": get_pupil_status,
     "ETÜ": get_etu,
     "EVM": get_evm,
+    "ETU_Data": get_etu_data,
     "Feiertage": get_holidays,
     "RTM_Vorhaltung": get_rtm_vorhaltung,
-    "TransportStatusHistory": get_transport_status_history,
 }
-

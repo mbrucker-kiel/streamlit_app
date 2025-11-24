@@ -1,9 +1,9 @@
 import requests
 import pandas as pd
- 
+
 
 def get_holidays(db=None, limit=10000):
-    """Fetch holiday data from a public API and return as a DataFrame""" 
+    """Fetch holiday data from a public API and return as a DataFrame"""
     try:
         # Fetch holiday data from the public API
         response = requests.get("https://get.api-feiertage.de/?states=sh")
@@ -12,17 +12,19 @@ def get_holidays(db=None, limit=10000):
         # the holidays are nested in a "feiertage" array
         # inside the feiertage array there are all holidays with date/name
         holidays = holidays.get("feiertage", [])
-        
+
         # Process the data into a DataFrame
         records = []
         for holiday in holidays:
-            records.append({
-                "date": holiday.get("date"),
-                "name": holiday.get("fname"),
-            })
+            records.append(
+                {
+                    "date": holiday.get("date"),
+                    "name": holiday.get("fname"),
+                }
+            )
 
         df = pd.DataFrame(records)
-        df["date"] = pd.to_datetime(df["date"], errors='coerce')
+        df["date"] = pd.to_datetime(df["date"], errors="coerce")
         df["weekday"] = df["date"].dt.day_name()
 
         return df

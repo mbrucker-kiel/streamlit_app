@@ -3,28 +3,41 @@ import pandas as pd
 import plotly.express as px
 import os
 from data_loading import data_loading
-from auth import check_authentication
 
 
+if not st.user.is_logged_in:
+    st.title("🔐 Authentifizierung erforderlich")
+    st.write(
+        "Diese Seite ist geschützt. Bitte melden Sie sich mit Ihrem Keycloak-Account an."
+    )
 
+    if st.button(
+        "✨ Mit Keycloak anmelden ✨",
+        type="primary",
+        use_container_width=True,
+    ):
+        st.login()
 
-# Authentication check
-if not check_authentication():
-    st.warning("Bitte melden Sie sich an, um auf diese Seite zuzugreifen.")
-    st.stop()
-
+    st.stop()  # Stop execution of the rest of the page
 
 # Load Feiertage (holidays) early for use in filters and weekday assignment
 wochenfeiertage = data_loading("Feiertage", limit=100)
 if not wochenfeiertage.empty:
     holiday_col = wochenfeiertage.columns[0]
-    holiday_dates = pd.to_datetime(wochenfeiertage[holiday_col], errors="coerce").dt.date.dropna().unique()
+    holiday_dates = (
+        pd.to_datetime(wochenfeiertage[holiday_col], errors="coerce")
+        .dt.date.dropna()
+        .unique()
+    )
 else:
     holiday_dates = []
 
 
 # Load configuration from environment variables
 DEFAULT_VEHICLES = os.getenv("DEFAULT_SKTW_VEHICLES").split(",")
+
+rtm_vorhaltung = data_loading("RTM_Vorhaltung", limit=1000)
+st.dataframe(rtm_vorhaltung)
 
 VEHICLE_CONFIG = os.getenv("VEHICLE_CONFIG")
 VEHICLE_SCHEDULES = {}
@@ -53,41 +66,51 @@ if not wochenfeiertage.empty:
     # Use date range from above
     try:
         holidays_in_range_df = wochenfeiertage[
-            (pd.to_datetime(wochenfeiertage[holiday_col], errors="coerce").dt.date >= start_date_only)
-            & (pd.to_datetime(wochenfeiertage[holiday_col], errors="coerce").dt.date <= end_date_only)
+            (
+                pd.to_datetime(wochenfeiertage[holiday_col], errors="coerce").dt.date
+                >= start_date_only
+            )
+            & (
+                pd.to_datetime(wochenfeiertage[holiday_col], errors="coerce").dt.date
+                <= end_date_only
+            )
         ].copy()
     except Exception:
         holidays_in_range_df = pd.DataFrame()
 
     if not holidays_in_range_df.empty:
-        holidays_in_range_df["Datum"] = pd.to_datetime(holidays_in_range_df[holiday_col], errors="coerce").dt.strftime("%d.%m.%Y")
+        holidays_in_range_df["Datum"] = pd.to_datetime(
+            holidays_in_range_df[holiday_col], errors="coerce"
+        ).dt.strftime("%d.%m.%Y")
         if holiday_name_col:
             holidays_in_range_df["Feiertag"] = holidays_in_range_df[holiday_name_col]
             display_cols = ["Datum", "Feiertag"]
         else:
             display_cols = ["Datum"]
         # Build markdown table
-        table_md = "| Datum | Feiertag |\n|---|---|\n" if holiday_name_col else "| Datum |\n|---|\n"
+        table_md = (
+            "| Datum | Feiertag |\n|---|---|\n"
+            if holiday_name_col
+            else "| Datum |\n|---|\n"
+        )
         for _, row in holidays_in_range_df.iterrows():
             if holiday_name_col:
                 table_md += f"| {row['Datum']} | {row['Feiertag']} |\n"
             else:
                 table_md += f"| {row['Datum']} |\n"
-        st.markdown(f"""
+        st.markdown(
+            f"""
 > **Hinweis:** Im ausgewählten Zeitraum sind folgende Wochenfeiertage enthalten ({len(holidays_in_range_df)}):
 
 {table_md}
-""")
-    else:
-        st.markdown(
-            "> **Hinweis:** Keine Wochenfeiertage im ausgewählten Zeitraum."
+"""
         )
+    else:
+        st.markdown("> **Hinweis:** Keine Wochenfeiertage im ausgewählten Zeitraum.")
 else:
-    st.markdown(
-        "> **Hinweis:** Keine Wochenfeiertage-Daten geladen."
-    )
+    st.markdown("> **Hinweis:** Keine Wochenfeiertage-Daten geladen.")
 
-etu_df = data_loading("ETÜ", limit=25000)
+etu_df = data_loading("ETÜ", limit=25001)
 
 # Filter für Einsatzdatum Intervall
 st.date_input(
@@ -104,6 +127,9 @@ start_dt = pd.to_datetime(start_date)
 end_dt = (
     pd.to_datetime(end_date) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
 )  # Include entire end date
+
+start_date_only = pd.to_datetime(start_date).date()
+end_date_only = pd.to_datetime(end_date).date()
 
 # Filter ETÜ data based on date range first
 if "EINSATZDATUM" in etu_df.columns:
@@ -127,12 +153,20 @@ if not wochenfeiertage.empty:
         holiday_name_col = None
 
     holidays_in_range_df = wochenfeiertage[
-        (pd.to_datetime(wochenfeiertage[holiday_col], errors="coerce").dt.date >= start_date_only)
-        & (pd.to_datetime(wochenfeiertage[holiday_col], errors="coerce").dt.date <= end_date_only)
+        (
+            pd.to_datetime(wochenfeiertage[holiday_col], errors="coerce").dt.date
+            >= start_date_only
+        )
+        & (
+            pd.to_datetime(wochenfeiertage[holiday_col], errors="coerce").dt.date
+            <= end_date_only
+        )
     ].copy()
 
     if not holidays_in_range_df.empty:
-        holidays_in_range_df["Datum"] = pd.to_datetime(holidays_in_range_df[holiday_col], errors="coerce").dt.strftime("%d.%m.%Y")
+        holidays_in_range_df["Datum"] = pd.to_datetime(
+            holidays_in_range_df[holiday_col], errors="coerce"
+        ).dt.strftime("%d.%m.%Y")
         if holiday_name_col:
             holidays_in_range_df["Feiertag"] = holidays_in_range_df[holiday_name_col]
             display_cols = ["Datum", "Feiertag"]
@@ -145,13 +179,9 @@ if not wochenfeiertage.empty:
         )
         st.dataframe(holidays_in_range_df[display_cols].reset_index(drop=True))
     else:
-        st.markdown(
-            "> **Hinweis:** Keine Wochenfeiertage im ausgewählten Zeitraum."
-        )
+        st.markdown("> **Hinweis:** Keine Wochenfeiertage im ausgewählten Zeitraum.")
 else:
-    st.markdown(
-        "> **Hinweis:** Keine Wochenfeiertage-Daten geladen."
-    )
+    st.markdown("> **Hinweis:** Keine Wochenfeiertage-Daten geladen.")
 
 etu_df = data_loading("ETÜ", limit=25000)
 
@@ -246,7 +276,7 @@ if selected_vehicles and not filtered_df.empty:
                 valid_missions["EINSATZENDE"] - valid_missions["EINSATZBEGINN"]
             ).dt.total_seconds() / 3600
 
-            # Filter out negative or unrealistic durations 
+            # Filter out negative or unrealistic durations
             valid_missions = valid_missions[
                 valid_missions["mission_duration_hours"] > 0
             ]
@@ -255,8 +285,12 @@ if selected_vehicles and not filtered_df.empty:
             valid_missions["mission_date"] = valid_missions["EINSATZBEGINN"].dt.date
             valid_missions["weekday"] = valid_missions["EINSATZBEGINN"].dt.day_name()
             valid_missions["weekday_group"] = valid_missions.apply(
-                lambda row: "Wochenfeiertag" if row["mission_date"] in holiday_dates else weekday_groups.get(row["weekday"], row["weekday"]),
-                axis=1
+                lambda row: (
+                    "Wochenfeiertag"
+                    if row["mission_date"] in holiday_dates
+                    else weekday_groups.get(row["weekday"], row["weekday"])
+                ),
+                axis=1,
             )
 
             # Calculate total available hours for the selected period
@@ -339,47 +373,88 @@ if selected_vehicles and not filtered_df.empty:
                             start_date_obj = start_dt.date()
                             end_date_obj = end_dt.date()
                             # Filter holidays in range
-                            holidays_in_range = [d for d in holiday_dates_set if start_date_obj <= d <= end_date_obj]
+                            holidays_in_range = [
+                                d
+                                for d in holiday_dates_set
+                                if start_date_obj <= d <= end_date_obj
+                            ]
                             num_holidays = len(holidays_in_range)
                             # Count number of each weekday in the selected range
                             date_range = pd.date_range(start=start_dt, end=end_dt)
-                            weekday_counts = date_range.day_name().value_counts().to_dict()
+                            weekday_counts = (
+                                date_range.day_name().value_counts().to_dict()
+                            )
                             # Remove holidays from their respective weekday count
-                            holiday_weekdays = [d.strftime("%A") for d in holidays_in_range]
+                            holiday_weekdays = [
+                                d.strftime("%A") for d in holidays_in_range
+                            ]
                             weekday_counts_holiday = weekday_counts.copy()
                             for hw in holiday_weekdays:
                                 if hw in weekday_counts_holiday:
                                     weekday_counts_holiday[hw] -= 1
                             # Calculate available hours per group
                             weekday_available = {
-                                "Mon-Thu": (weekly_hours / 7) * sum(weekday_counts_holiday.get(day, 0) for day in ["Monday", "Tuesday", "Wednesday", "Thursday"]),
-                                "Fri": (weekly_hours / 7) * weekday_counts_holiday.get("Friday", 0),
-                                "Sat": (weekly_hours / 7) * weekday_counts_holiday.get("Saturday", 0),
-                                "Sun": (weekly_hours / 7) * weekday_counts_holiday.get("Sunday", 0),
-                                "Wochenfeiertag": (weekly_hours / 7) * num_holidays,  # treat as Saturday
+                                "Mon-Thu": (weekly_hours / 7)
+                                * sum(
+                                    weekday_counts_holiday.get(day, 0)
+                                    for day in [
+                                        "Monday",
+                                        "Tuesday",
+                                        "Wednesday",
+                                        "Thursday",
+                                    ]
+                                ),
+                                "Fri": (weekly_hours / 7)
+                                * weekday_counts_holiday.get("Friday", 0),
+                                "Sat": (weekly_hours / 7)
+                                * weekday_counts_holiday.get("Saturday", 0),
+                                "Sun": (weekly_hours / 7)
+                                * weekday_counts_holiday.get("Sunday", 0),
+                                "Wochenfeiertag": (weekly_hours / 7)
+                                * num_holidays,  # treat as Saturday
                             }
 
                             weekday_df = data["weekday_stats"].copy()
-                            for weekday in ["Mon-Thu", "Fri", "Sat", "Sun", "Wochenfeiertag"]:
+                            for weekday in [
+                                "Mon-Thu",
+                                "Fri",
+                                "Sat",
+                                "Sun",
+                                "Wochenfeiertag",
+                            ]:
                                 if weekday in weekday_df.index:
                                     available = weekday_available.get(weekday, 0)
-                                    used = weekday_df.loc[weekday, "mission_duration_hours"]
-                                    pct = (used / available * 100) if available > 0 else 0
-                                    weekday_df.loc[weekday, "available_hours"] = round(available, 1)
-                                    weekday_df.loc[weekday, "utilization_pct"] = round(pct, 1)
+                                    used = weekday_df.loc[
+                                        weekday, "mission_duration_hours"
+                                    ]
+                                    pct = (
+                                        (used / available * 100) if available > 0 else 0
+                                    )
+                                    weekday_df.loc[weekday, "available_hours"] = round(
+                                        available, 1
+                                    )
+                                    weekday_df.loc[weekday, "utilization_pct"] = round(
+                                        pct, 1
+                                    )
                                 else:
-                                    weekday_df.loc[weekday, "available_hours"] = round(weekday_available.get(weekday, 0), 1)
+                                    weekday_df.loc[weekday, "available_hours"] = round(
+                                        weekday_available.get(weekday, 0), 1
+                                    )
                                     weekday_df.loc[weekday, "utilization_pct"] = 0
-                                    weekday_df.loc[weekday, "mission_duration_hours"] = 0
+                                    weekday_df.loc[
+                                        weekday, "mission_duration_hours"
+                                    ] = 0
                                     weekday_df.loc[weekday, "AUFTRAGS_NR"] = 0
 
                             # Reorder columns
-                            weekday_df = weekday_df[[
-                                "mission_duration_hours",
-                                "available_hours",
-                                "utilization_pct",
-                                "AUFTRAGS_NR",
-                            ]]
+                            weekday_df = weekday_df[
+                                [
+                                    "mission_duration_hours",
+                                    "available_hours",
+                                    "utilization_pct",
+                                    "AUFTRAGS_NR",
+                                ]
+                            ]
                             weekday_df.columns = [
                                 "Einsatz-Stunden",
                                 "Verfügbare Stunden",
@@ -387,14 +462,15 @@ if selected_vehicles and not filtered_df.empty:
                                 "Anzahl Einsätze",
                             ]
 
-
                             st.dataframe(
-                                weekday_df.style.format({
-                                    "Einsatz-Stunden": "{:.1f}",
-                                    "Verfügbare Stunden": "{:.1f}",
-                                    "Auslastung %": "{:.1f}%",
-                                    "Anzahl Einsätze": "{:.0f}",
-                                })
+                                weekday_df.style.format(
+                                    {
+                                        "Einsatz-Stunden": "{:.1f}",
+                                        "Verfügbare Stunden": "{:.1f}",
+                                        "Auslastung %": "{:.1f}%",
+                                        "Anzahl Einsätze": "{:.0f}",
+                                    }
+                                )
                             )
 
                             # Group missions by hour of day and for Feiertage detail
@@ -412,33 +488,71 @@ if selected_vehicles and not filtered_df.empty:
                                     else:
                                         holiday_name_col = None
                                     holidays_in_range_df = wochenfeiertage[
-                                        (pd.to_datetime(wochenfeiertage[holiday_col], errors="coerce").dt.date >= start_date_obj)
-                                        & (pd.to_datetime(wochenfeiertage[holiday_col], errors="coerce").dt.date <= end_date_obj)
+                                        (
+                                            pd.to_datetime(
+                                                wochenfeiertage[holiday_col],
+                                                errors="coerce",
+                                            ).dt.date
+                                            >= start_date_obj
+                                        )
+                                        & (
+                                            pd.to_datetime(
+                                                wochenfeiertage[holiday_col],
+                                                errors="coerce",
+                                            ).dt.date
+                                            <= end_date_obj
+                                        )
                                     ].copy()
-                                    holidays_in_range_df["Datum"] = pd.to_datetime(holidays_in_range_df[holiday_col], errors="coerce").dt.strftime("%d.%m.%Y")
+                                    holidays_in_range_df["Datum"] = pd.to_datetime(
+                                        holidays_in_range_df[holiday_col],
+                                        errors="coerce",
+                                    ).dt.strftime("%d.%m.%Y")
                                     if holiday_name_col:
-                                        holidays_in_range_df["Feiertag"] = holidays_in_range_df[holiday_name_col]
+                                        holidays_in_range_df["Feiertag"] = (
+                                            holidays_in_range_df[holiday_name_col]
+                                        )
                                     # For each holiday, calculate total mission hours for this vehicle
                                     holiday_mission_hours = []
                                     for _, hrow in holidays_in_range_df.iterrows():
-                                        h_date = pd.to_datetime(hrow[holiday_col], errors="coerce").date()
+                                        h_date = pd.to_datetime(
+                                            hrow[holiday_col], errors="coerce"
+                                        ).date()
                                         missions_on_holiday = valid_missions_vehicle[
-                                            valid_missions_vehicle["EINSATZBEGINN"].dt.date == h_date
+                                            valid_missions_vehicle[
+                                                "EINSATZBEGINN"
+                                            ].dt.date
+                                            == h_date
                                         ]
-                                        total_hours = missions_on_holiday["mission_duration_hours"].sum()
-                                        holiday_mission_hours.append({
-                                            "Datum": hrow["Datum"],
-                                            "Feiertag": hrow["Feiertag"] if holiday_name_col else "",
-                                            "Einsatz-Stunden": round(total_hours, 2),
-                                            "Anzahl Einsätze": len(missions_on_holiday),
-                                        })
+                                        total_hours = missions_on_holiday[
+                                            "mission_duration_hours"
+                                        ].sum()
+                                        holiday_mission_hours.append(
+                                            {
+                                                "Datum": hrow["Datum"],
+                                                "Feiertag": (
+                                                    hrow["Feiertag"]
+                                                    if holiday_name_col
+                                                    else ""
+                                                ),
+                                                "Einsatz-Stunden": round(
+                                                    total_hours, 2
+                                                ),
+                                                "Anzahl Einsätze": len(
+                                                    missions_on_holiday
+                                                ),
+                                            }
+                                        )
                                     # Display as dataframe
                                     feiertag_df = pd.DataFrame(holiday_mission_hours)
                                     if not feiertag_df.empty:
-                                        st.write("**Einsatzstunden je Wochenfeiertag für dieses Fahrzeug:**")
+                                        st.write(
+                                            "**Einsatzstunden je Wochenfeiertag für dieses Fahrzeug:**"
+                                        )
                                         st.dataframe(feiertag_df)
                                     else:
-                                        st.info("Keine Einsätze an Wochenfeiertagen für dieses Fahrzeug im Zeitraum.")
+                                        st.info(
+                                            "Keine Einsätze an Wochenfeiertagen für dieses Fahrzeug im Zeitraum."
+                                        )
 
                         with col2:
                             st.write("**Einsätze nach Stunde:**")
@@ -490,19 +604,29 @@ if not wochenfeiertage.empty:
 
     # Filter holidays in selected date range
     holidays_in_range_df = wochenfeiertage[
-        (pd.to_datetime(wochenfeiertage[holiday_col], errors="coerce").dt.date >= start_date_only)
-        & (pd.to_datetime(wochenfeiertage[holiday_col], errors="coerce").dt.date <= end_date_only)
+        (
+            pd.to_datetime(wochenfeiertage[holiday_col], errors="coerce").dt.date
+            >= start_date_only
+        )
+        & (
+            pd.to_datetime(wochenfeiertage[holiday_col], errors="coerce").dt.date
+            <= end_date_only
+        )
     ].copy()
 
     # Prepare display table
     if not holidays_in_range_df.empty:
-        holidays_in_range_df["Datum"] = pd.to_datetime(holidays_in_range_df[holiday_col], errors="coerce").dt.strftime("%d.%m.%Y")
+        holidays_in_range_df["Datum"] = pd.to_datetime(
+            holidays_in_range_df[holiday_col], errors="coerce"
+        ).dt.strftime("%d.%m.%Y")
         if holiday_name_col:
             holidays_in_range_df["Feiertag"] = holidays_in_range_df[holiday_name_col]
             display_cols = ["Datum", "Feiertag", "weekday"]
         else:
             display_cols = ["Datum"]
-        st.write(f"Im ausgewählten Zeitraum sind folgende Wochenfeiertage enthalten ({len(holidays_in_range_df)}):")
+        st.write(
+            f"Im ausgewählten Zeitraum sind folgende Wochenfeiertage enthalten ({len(holidays_in_range_df)}):"
+        )
         st.dataframe(holidays_in_range_df[display_cols].reset_index(drop=True))
     else:
         st.info("Keine Wochenfeiertage im ausgewählten Zeitraum.")
@@ -756,10 +880,18 @@ if not filtered_df.empty and selected_vehicles:
 
                         # Get status for marker shape differentiation
                         status = str(row.get("STATUS_BEI_ALARMIERUNG", "Unknown"))
-                        
+
                         # Create popup with protocol ID and other details
-                        lat_str = f"{row['latitude']:.4f}" if 'latitude' in row and pd.notnull(row['latitude']) else "N/A"
-                        lon_str = f"{row['longitude']:.4f}" if 'longitude' in row and pd.notnull(row['longitude']) else "N/A"
+                        lat_str = (
+                            f"{row['latitude']:.4f}"
+                            if "latitude" in row and pd.notnull(row["latitude"])
+                            else "N/A"
+                        )
+                        lon_str = (
+                            f"{row['longitude']:.4f}"
+                            if "longitude" in row and pd.notnull(row["longitude"])
+                            else "N/A"
+                        )
                         popup_text = f"""
                         <b>Fahrzeug:</b> {vehicle}<br>
                         <b>AUFTRAGS_NR:</b> {row.get('AUFTRAGS_NR')}<br>
@@ -769,14 +901,14 @@ if not filtered_df.empty and selected_vehicles:
                         <b>Lat:</b> {lat_str}<br>
                         <b>Lon:</b> {lon_str}
                         """
-                        
+
                         # Define marker shapes based on status
                         if status == "1 Einsatzbereit Funk":  # triangle marker
                             # Create a triangle div icon using CSS borders
                             icon_html = (
                                 f'<div style="width: 0; height: 0; '
-                                f'border-left: 8px solid transparent; '
-                                f'border-right: 8px solid transparent; '
+                                f"border-left: 8px solid transparent; "
+                                f"border-right: 8px solid transparent; "
                                 f'border-bottom: 16px solid {color};"></div>'
                             )
                             icon = DivIcon(html=icon_html)
@@ -810,7 +942,7 @@ if not filtered_df.empty and selected_vehicles:
                                 popup=popup_text,
                                 tooltip=f"{vehicle} - {status}",
                             )
-                        
+
                         marker.add_to(m)
 
                     # Create dynamic legend based on user color selections
@@ -832,7 +964,9 @@ if not filtered_df.empty and selected_vehicles:
                     m.get_root().html.add_child(folium.Element(legend_html))
 
                     # Display the map - PREVENT RERUNS when zooming/panning
-                    st_folium(m, height=800, returned_objects=[], use_container_width=True)
+                    st_folium(
+                        m, height=800, returned_objects=[], use_container_width=True
+                    )
                     st.write(
                         f"**Einsatzorte auf Karte:** {len(geo_valid_df)} Punkte angezeigt"
                     )

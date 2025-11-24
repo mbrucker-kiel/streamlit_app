@@ -5,20 +5,10 @@ import plotly.graph_objects as go
 import numpy as np
 from data_loading import data_loading
 import datetime
-from auth import check_authentication, logout
-
-# Authentication check
-if not check_authentication():
-    st.warning("Bitte melden Sie sich an, um auf diese Seite zuzugreifen.")
-    st.stop()
-
-st.title("1.3 Erstbearbeitungszeit in der Leitstelle")
 
 # Logout-Button in der Sidebar anzeigen
 logout()
 
-# Begrüßung anzeigen
-st.sidebar.write(f'Willkommen *{st.session_state["name"]}*')
 
 # Now load data after authentication
 

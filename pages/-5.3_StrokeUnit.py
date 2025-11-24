@@ -3,26 +3,32 @@ import streamlit as st
 import ast
 from data_loading import data_loading
 import plotly.graph_objects as go
-from auth import check_authentication, logout
 
-# Authentication check
-if not check_authentication():
-    st.warning("Bitte melden Sie sich an, um auf diese Seite zuzugreifen.")
-    st.stop()
+if not st.user.is_logged_in:
+    st.title("🔐 Authentifizierung erforderlich")
+    st.write(
+        "Diese Seite ist geschützt. Bitte melden Sie sich mit Ihrem Keycloak-Account an."
+    )
+
+    if st.button(
+        "✨ Mit Keycloak anmelden ✨",
+        type="primary",
+        use_container_width=True,
+    ):
+        st.login()
+
+    st.stop()  # Stop execution of the rest of the page
 
 # Title and description
 st.title("5.3 Zielklinik Stroke-Unit")
 
-# Logout-Button in der Sidebar anzeigen
-logout()
-
-# Begrüßung anzeigen
-st.sidebar.write(f'Willkommen *{st.session_state["name"]}*')
 
 # Now load data after authentication
 
 # Load data
-df_krankenhaus = pd.read_csv("data/krankenhausDigagnosen.csv", sep=";")
+df_krankenhaus = pd.read_csv(
+    "data/krankenhausDigagnosen.csv", sep=";", encoding="latin1"
+)
 st.write(df_krankenhaus)
 
 df_index = data_loading("Index")

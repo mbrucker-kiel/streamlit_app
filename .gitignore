@@ -6,3 +6,4 @@ httpsCerts/
 pages/toBeDone/evmAuswertungen.py
 data/ktw_sh_transport_status_history.csv
 .gitignore
+.streamlit/secrets.toml

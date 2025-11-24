@@ -3,13 +3,21 @@ import pandas as pd
 from data_loading import data_loading
 import plotly.express as px
 import plotly.graph_objects as go
-from auth import check_authentication
-from data_helpers import analyze_freetext_requirements
 
-# Authentication check
-if not check_authentication():
-    st.warning("Bitte melden Sie sich an, um auf diese Seite zuzugreifen.")
-    st.stop()
+if not st.user.is_logged_in:
+    st.title("🔐 Authentifizierung erforderlich")
+    st.write(
+        "Diese Seite ist geschützt. Bitte melden Sie sich mit Ihrem Keycloak-Account an."
+    )
+
+    if st.button(
+        "✨ Mit Keycloak anmelden ✨",
+        type="primary",
+        use_container_width=True,
+    ):
+        st.login()
+
+    st.stop()  # Stop execution of the rest of the page
 
 st.title("Schwerpunktanalyse")
 
@@ -67,14 +75,16 @@ with st.expander("Filteroptionen"):
     patient_lastname_options = ["Alle"] + list(
         index_df["patientLastname"].dropna().unique()
     )
-    st.selectbox("Patient Nachname", options=patient_lastname_options, key="patient_lastname_filter")
+    st.selectbox(
+        "Patient Nachname",
+        options=patient_lastname_options,
+        key="patient_lastname_filter",
+    )
 
 filtered_df = etu_df
 
 if st.session_state["city_filter"] != "Alle":
-    filtered_df = filtered_df[
-        filtered_df["EO_ORT"] == st.session_state["city_filter"]
-    ]
+    filtered_df = filtered_df[filtered_df["EO_ORT"] == st.session_state["city_filter"]]
 
 if st.session_state["street_filter"] != "Alle":
     filtered_df = filtered_df[
@@ -103,10 +113,14 @@ end_date_utc = pd.to_datetime(end_date).tz_localize("UTC")
 # Handle timezone conversion for EINSATZDATUM - localize if naive, convert if already localized
 if filtered_df["EINSATZBEGINN"].dt.tz is None:
     # Data is tz-naive, localize to UTC
-    filtered_df["EINSATZBEGINN"] = pd.to_datetime(filtered_df["EINSATZBEGINN"]).dt.tz_localize("UTC")
+    filtered_df["EINSATZBEGINN"] = pd.to_datetime(
+        filtered_df["EINSATZBEGINN"]
+    ).dt.tz_localize("UTC")
 else:
     # Data is already timezone-aware, convert to UTC
-    filtered_df["EINSATZBEGINN"] = pd.to_datetime(filtered_df["EINSATZBEGINN"]).dt.tz_convert("UTC")
+    filtered_df["EINSATZBEGINN"] = pd.to_datetime(
+        filtered_df["EINSATZBEGINN"]
+    ).dt.tz_convert("UTC")
 
 mask = (filtered_df["EINSATZBEGINN"] >= start_date_utc) & (
     filtered_df["EINSATZBEGINN"] <= end_date_utc
@@ -180,9 +194,7 @@ if "staticMissionType" in merged_df.columns:
         st.write(f"**Gefiltert nach: {krankentransport_values}**")
     else:
         # Fallback to exact match if no values found
-        merged_df = merged_df[
-            merged_df["staticMissionType"] == "Krankentransport"
-        ]
+        merged_df = merged_df[merged_df["staticMissionType"] == "Krankentransport"]
 
     st.write(f"**Nach Filter: {len(merged_df)} Krankentransport-Einsätze gefunden**")
 
@@ -243,6 +255,7 @@ if "missionType" in merged_df.columns and "missionDate" in merged_df.columns:
         )
 
         # Apply color scheme and use darker colors for "kein Transport" missions
+
     def get_color_for_mission(mission_type):
         if pd.isna(mission_type):
             return color[4]  # default - unterstützer color for unknown
@@ -393,14 +406,20 @@ if "alarmTime" in merged_df.columns:
     valid_times_df = merged_df.dropna(subset=["alarmTime"])
     if not valid_times_df.empty:
         # Ensure alarmTime is datetime
-        valid_times_df["alarmTime"] = pd.to_datetime(valid_times_df["alarmTime"], errors='coerce')
-        valid_times_df = valid_times_df.dropna(subset=["alarmTime"])  # Remove any rows that couldn't be converted
+        valid_times_df["alarmTime"] = pd.to_datetime(
+            valid_times_df["alarmTime"], errors="coerce"
+        )
+        valid_times_df = valid_times_df.dropna(
+            subset=["alarmTime"]
+        )  # Remove any rows that couldn't be converted
 
         if not valid_times_df.empty:
             valid_times_df["weekday"] = valid_times_df["alarmTime"].dt.day_name()
             valid_times_df["hour"] = valid_times_df["alarmTime"].dt.hour
             heatmap_data = (
-                valid_times_df.groupby(["weekday", "hour"]).size().reset_index(name="counts")
+                valid_times_df.groupby(["weekday", "hour"])
+                .size()
+                .reset_index(name="counts")
             )
             heatmap_data = heatmap_data.pivot(
                 index="weekday", columns="hour", values="counts"
@@ -430,7 +449,9 @@ if "alarmTime" in merged_df.columns:
         else:
             st.warning("Keine gültigen Alarmzeiten nach Bereinigung verfügbar.")
     else:
-        st.warning("Keine gültigen Alarmzeiten für die Wochentag/Uhrzeit-Analyse verfügbar.")
+        st.warning(
+            "Keine gültigen Alarmzeiten für die Wochentag/Uhrzeit-Analyse verfügbar."
+        )
 else:
     st.warning("Spalte 'alarmTime' nicht gefunden im Datensatz.")
 
@@ -558,7 +579,7 @@ if not sankey_data.empty:
 
     fig.update_layout(
         title_text="Datenfluss: ETU-Diagnose (CEDUS_CODE) → "
-                   "Endgültige Diagnose (leadingDiagnosis)",
+        "Endgültige Diagnose (leadingDiagnosis)",
         font_size=10,
     )
 
@@ -700,7 +721,7 @@ if not filtered_df.empty and not index_df.empty:
         left_on="EINSATZ_NR",
         right_on="missionNumber",
         how="left",
-        suffixes=("_ETÜ", "_Index")
+        suffixes=("_ETÜ", "_Index"),
     )
 
     # If Freetext data is available, merge it too
@@ -710,7 +731,7 @@ if not filtered_df.empty and not index_df.empty:
             left_on="protocolId",
             right_on="protocolId",
             how="left",
-            suffixes=("", "_Freetext")
+            suffixes=("", "_Freetext"),
         )
 else:
     st.warning("Keine Daten zum Zusammenführen verfügbar")
@@ -718,19 +739,19 @@ else:
 # Display Anamnese data from freetext
 st.subheader("🏥 Anamnesis-Daten")
 
-if not merged_with_freetext.empty and 'data' in merged_with_freetext.columns:
+if not merged_with_freetext.empty and "data" in merged_with_freetext.columns:
     # Extract Anamnese data from the nested data column of MERGED freetext data
     anamnese_data = []
 
     for idx, row in merged_with_freetext.iterrows():
-        if row['data'] and isinstance(row['data'], list):
-            for item in row['data']:
-                if isinstance(item, dict) and item.get('description') == 'Anamnese':
+        if row["data"] and isinstance(row["data"], list):
+            for item in row["data"]:
+                if isinstance(item, dict) and item.get("description") == "Anamnese":
                     # Add protocolId from the row and merge with item data
                     anamnese_item = {
-                        'protocolId': row.get('protocolId'),
-                        'EINSATZ_NR': row.get('EINSATZ_NR'),
-                        **item
+                        "protocolId": row.get("protocolId"),
+                        "EINSATZ_NR": row.get("EINSATZ_NR"),
+                        **item,
                     }
                     anamnese_data.append(anamnese_item)
 
@@ -742,7 +763,8 @@ if not merged_with_freetext.empty and 'data' in merged_with_freetext.columns:
 
         # Reorder columns to show AUFTRAGS_NR and protocolId first
         cols = ["EINSATZ_NR", "protocolId"] + [
-            col for col in anamnese_df.columns
+            col
+            for col in anamnese_df.columns
             if col not in ["EINSATZ_NR", "protocolId"]
         ]
         anamnese_df = anamnese_df[cols]
@@ -752,4 +774,3 @@ if not merged_with_freetext.empty and 'data' in merged_with_freetext.columns:
         st.warning("Keine Anamnese-Daten in den gefilterten Einsätzen gefunden")
 else:
     st.warning("Keine Freetext-Daten verfügbar oder keine Übereinstimmungen gefunden")
-

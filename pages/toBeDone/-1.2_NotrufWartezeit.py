@@ -1,18 +1,24 @@
 import streamlit as st
-from auth import check_authentication, logout
 
-# Authentication check
-if not check_authentication():
-    st.warning("Bitte melden Sie sich an, um auf diese Seite zuzugreifen.")
-    st.stop()
 
+if not st.user.is_logged_in:
+    st.set_page_config(page_title="KTW.sh - Login erforderlich", layout="centered")
+
+    st.title("🔐 Authentifizierung erforderlich")
+    st.write(
+        "Diese Seite ist geschützt. Bitte melden Sie sich mit Ihrem Keycloak-Account an."
+    )
+
+    if st.button(
+        "✨ Mit Keycloak anmelden ✨",
+        type="primary",
+        use_container_width=True,
+    ):
+        st.login()
+
+    st.stop()  # Stop execution of the rest of the page
 st.title("1.2 Notruf-Wartezeit")
 
-# Logout-Button in der Sidebar anzeigen
-logout()
-
-# Begrüßung anzeigen
-st.sidebar.write(f'Willkommen *{st.session_state["name"]}*')
 
 # Now show content after authentication
 

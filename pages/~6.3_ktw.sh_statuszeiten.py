@@ -1,20 +1,22 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from auth import check_authentication, logout
 
-# Authentication check
-if not check_authentication():
-    st.warning("Bitte melden Sie sich an, um auf diese Seite zuzugreifen.")
-    st.stop()
+if not st.user.is_logged_in:
+    st.title("🔐 Authentifizierung erforderlich")
+    st.write(
+        "Diese Seite ist geschützt. Bitte melden Sie sich mit Ihrem Keycloak-Account an."
+    )
 
+    if st.button(
+        "✨ Mit Keycloak anmelden ✨",
+        type="primary",
+        use_container_width=True,
+    ):
+        st.login()
+
+    st.stop()  # Stop execution of the rest of the page
 st.title("6.3 Transport Status Zeiten Analyse")
-
-# Logout-Button in der Sidebar anzeigen
-logout()
-
-# Begrüßung anzeigen
-st.sidebar.write(f'Willkommen *{st.session_state["name"]}*')
 
 
 # Load the data
@@ -219,7 +221,7 @@ if "transport_id" in df.columns:
 
     # Transport journey visualization
     st.write("**Transport Journey - Status Timeline pro Transport:**")
-    
+
     selected_transport = st.selectbox(
         "Wählen Sie einen Transport:",
         sorted(df["transport_id"].unique()),
@@ -230,7 +232,7 @@ if "transport_id" in df.columns:
         transport_data = df[df["transport_id"] == selected_transport].sort_values(
             "changed_at"
         )
-        
+
         # Create a Gantt-like visualization
         transport_data_display = transport_data[
             ["changed_at", "old_status", "new_status", "changed_by_id"]
@@ -241,7 +243,7 @@ if "transport_id" in df.columns:
             "Neuer Status",
             "Geändert von",
         ]
-        
+
         st.dataframe(transport_data_display, use_container_width=True)
 
         # Timeline visualization
@@ -261,13 +263,9 @@ st.subheader("Benutzer-Aktivitäts Analyse")
 
 if "changed_by_id" in df.columns:
     user_activity = (
-        df.groupby("changed_by_id")
-        .size()
-        .reset_index(name="Statusänderungen")
+        df.groupby("changed_by_id").size().reset_index(name="Statusänderungen")
     )
-    user_activity = user_activity.sort_values(
-        "Statusänderungen", ascending=False
-    )
+    user_activity = user_activity.sort_values("Statusänderungen", ascending=False)
 
     st.write("**Statusänderungen pro Benutzer:**")
     st.dataframe(user_activity, use_container_width=True)
@@ -332,16 +330,13 @@ with col2:
     st.metric("Transporte mit Storno", storno_count)
 
 with col3:
-    st.metric(
-        "Storno Prozentanteil",
-        f"{(storno_count / len(flows_df) * 100):.1f}%"
-    )
+    st.metric("Storno Prozentanteil", f"{(storno_count / len(flows_df) * 100):.1f}%")
 
 with col4:
     abgeschlossen_count = (flows_df["final_status"] == "abgeschlossen").sum()
     st.metric(
         "Abgeschlossene Transporte",
-        f"{abgeschlossen_count} ({abgeschlossen_count/len(flows_df)*100:.1f}%)"
+        f"{abgeschlossen_count} ({abgeschlossen_count/len(flows_df)*100:.1f}%)",
     )
 
 # Analyze final status distribution
@@ -387,9 +382,7 @@ if len(storno_transports) > 0:
 
     with col2:
         # Storno outcomes
-        storno_outcomes = (
-            storno_transports["final_status"].value_counts().reset_index()
-        )
+        storno_outcomes = storno_transports["final_status"].value_counts().reset_index()
         storno_outcomes.columns = ["Endzustand nach Storno", "Anzahl"]
 
         fig_storno_outcomes = px.bar(
@@ -511,12 +504,12 @@ for transport_id in df["transport_id"].unique():
 
     # Check if transport has offen and angenommen status
     if "offen" in statuses and "angenommen" in statuses:
-        offen_time = transport_df[
-            transport_df["new_status"] == "offen"
-        ]["changed_at"].iloc[0]
-        angenommen_time = transport_df[
-            transport_df["new_status"] == "angenommen"
-        ]["changed_at"].iloc[0]
+        offen_time = transport_df[transport_df["new_status"] == "offen"][
+            "changed_at"
+        ].iloc[0]
+        angenommen_time = transport_df[transport_df["new_status"] == "angenommen"][
+            "changed_at"
+        ].iloc[0]
 
         # Only consider if angenommen comes after offen
         if angenommen_time > offen_time:
@@ -544,9 +537,9 @@ for transport_id in df["transport_id"].unique():
     # Check transports without angenommen
     if "offen" in statuses and "angenommen" not in statuses:
         if "disponiert" in statuses or "abgeschlossen" in statuses:
-            offen_time = transport_df[
-                transport_df["new_status"] == "offen"
-            ]["changed_at"].iloc[0]
+            offen_time = transport_df[transport_df["new_status"] == "offen"][
+                "changed_at"
+            ].iloc[0]
 
             # Find next status after offen
             remaining = transport_df[transport_df["changed_at"] > offen_time]
@@ -654,9 +647,7 @@ if acceptance_times:
     st.dataframe(acceptance_display, use_container_width=True)
 
 else:
-    st.info(
-        "Keine Transporte mit Annahme-Phase (offen → angenommen) gefunden."
-    )
+    st.info("Keine Transporte mit Annahme-Phase (offen → angenommen) gefunden.")
 
 # Display direct transitions (no acceptance)
 if direct_transitions:
@@ -705,9 +696,9 @@ if direct_transitions:
         "Reaktionszeit (Min)",
     ]
 
-    direct_display["Reaktionszeit (Min)"] = direct_display[
-        "Reaktionszeit (Min)"
-    ].apply(lambda x: f"{x:.1f}")
+    direct_display["Reaktionszeit (Min)"] = direct_display["Reaktionszeit (Min)"].apply(
+        lambda x: f"{x:.1f}"
+    )
 
     st.dataframe(direct_display, use_container_width=True)
 
@@ -779,8 +770,7 @@ if acceptance_times and direct_transitions:
 
 # Extended flow analysis: offen → angenommen → disponiert → abgeschlossen
 st.subheader(
-    "Erweiterte Fluss-Analyse: "
-    "offen → angenommen → disponiert → abgeschlossen"
+    "Erweiterte Fluss-Analyse: " "offen → angenommen → disponiert → abgeschlossen"
 )
 
 # Analyze complete flow paths
@@ -802,35 +792,29 @@ for transport_id in df["transport_id"].unique():
         has_disponiert = "disponiert" in remaining_statuses
         has_abgeschlossen = "abgeschlossen" in remaining_statuses
 
-        if (
-            has_angenommen and has_disponiert and has_abgeschlossen
-        ):  # Full flow
-            offen_time = transport_df[
-                transport_df["new_status"] == "offen"
-            ]["changed_at"].iloc[0]
-            angenommen_time = transport_df[
-                transport_df["new_status"] == "angenommen"
-            ]["changed_at"].iloc[0]
-            disponiert_time = transport_df[
-                transport_df["new_status"] == "disponiert"
-            ]["changed_at"].iloc[0]
+        if has_angenommen and has_disponiert and has_abgeschlossen:  # Full flow
+            offen_time = transport_df[transport_df["new_status"] == "offen"][
+                "changed_at"
+            ].iloc[0]
+            angenommen_time = transport_df[transport_df["new_status"] == "angenommen"][
+                "changed_at"
+            ].iloc[0]
+            disponiert_time = transport_df[transport_df["new_status"] == "disponiert"][
+                "changed_at"
+            ].iloc[0]
             abgeschlossen_time = transport_df[
                 transport_df["new_status"] == "abgeschlossen"
             ]["changed_at"].iloc[-1]
 
             # Calculate durations for each step
-            offen_to_angenommen = (
-                angenommen_time - offen_time
-            ).total_seconds() / 60
+            offen_to_angenommen = (angenommen_time - offen_time).total_seconds() / 60
             angenommen_to_disponiert = (
                 disponiert_time - angenommen_time
             ).total_seconds() / 60
             disponiert_to_abgeschlossen = (
                 abgeschlossen_time - disponiert_time
             ).total_seconds() / 60
-            total_duration = (
-                abgeschlossen_time - offen_time
-            ).total_seconds() / 60
+            total_duration = (abgeschlossen_time - offen_time).total_seconds() / 60
 
             complete_flows.append(
                 {
@@ -908,9 +892,7 @@ if complete_flows:
                     "verfügbar →\nabgeschlossen",
                 ]
                 * len(complete_flows_df),
-                "Dauer (Min)": list(
-                    complete_flows_df["offen_to_angenommen_min"]
-                )
+                "Dauer (Min)": list(complete_flows_df["offen_to_angenommen_min"])
                 + list(complete_flows_df["angenommen_to_disponiert_min"])
                 + list(complete_flows_df["disponiert_to_abgeschlossen_min"]),
             }
@@ -949,9 +931,7 @@ if complete_flows:
             title="Durchschnittliche Dauer pro Schritt",
             text="Durchschnittliche Dauer (Min)",
         )
-        fig_avg_steps.update_traces(
-            texttemplate="%{text:.1f}", textposition="outside"
-        )
+        fig_avg_steps.update_traces(texttemplate="%{text:.1f}", textposition="outside")
         st.plotly_chart(fig_avg_steps, use_container_width=True)
 
     # Timeline scatter showing all transports
@@ -1033,4 +1013,3 @@ else:
         "Keine Transporte gefunden, die die vollständige Flussfolge "
         "(offen → angenommen → disponiert → abgeschlossen) durchlaufen."
     )
-
