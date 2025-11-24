@@ -69,6 +69,15 @@ if df_index.empty:
     st.error("Could not load Index data")
     st.stop()
 
+# Filter Index data for missionType
+if "missionType" in df_index.columns:
+    df_index = df_index[
+        df_index["missionType"].isin(["Pauschale RTW", "RTW - Transport"])
+    ]
+    if df_index.empty:
+        st.error("No data with missionType 'Pauschale RTW' or 'RTW - Transport'")
+        st.stop()
+
 # Load BKN Diagnosen from Excel
 try:
     df_bkn_diagnosis = pd.read_excel("data/BKN Diagnosen.xlsx", engine="openpyxl")
@@ -85,8 +94,8 @@ merged_df = df_bkn.merge(
     df_etu, on="OBER_EINSATZ_NR", how="left", suffixes=("_bkn", "_etu")
 )
 
-# Step 2: Merge with Index
-index_cols = ["missionNumber", "leadingDiagnosis"]
+# Step 2: Merge with Index (filtered for RTW mission types)
+index_cols = ["missionNumber", "leadingDiagnosis", "missionType"]
 index_for_merge = df_index[
     [col for col in index_cols if col in df_index.columns]
 ].copy()

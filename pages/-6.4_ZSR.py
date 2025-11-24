@@ -32,8 +32,20 @@ def load_and_prepare_data_v3():
     # Lade Daten
     df_index = data_loading(metric="Index")
     df_details = data_loading(metric="Details")
-    df_rea = data_loading(metric="Reanimation")
-    df_gcs = data_loading(metric="GCS")
+    df_rea = data_loading(metric="Reanimation", limit=10000)
+    df_gcs = data_loading(metric="GCS", limit=10000)
+
+    # Filter Index data for missionType before merging
+    if "missionType" in df_index.columns:
+        df_index = df_index[
+            df_index["missionType"].isin(["Pauschale RTW", "RTW - Transport"])
+        ]
+
+    # Filter Details data to match filtered Index data
+    if not df_details.empty and "protocolId" in df_index.columns:
+        df_details = df_details[
+            df_details["protocolId"].isin(df_index["protocolId"])
+        ]
 
     # Load hospital data with proper encoding handling
     df_krankenhaus = None
