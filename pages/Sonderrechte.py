@@ -21,10 +21,6 @@ if not st.user.is_logged_in:
 
 st.title("🚨 Sonderrechte Dashboard")
 
-# Check if user is in the "Sonderrechte" group
-if "Sonderrechte" not in st.user.groups:
-    st.error("❌ Zugriff verweigert: Sie gehören nicht zur Gruppe 'Sonderrechte'")
-    st.stop()
 
 st.markdown("""
 ### 📋 Überblick

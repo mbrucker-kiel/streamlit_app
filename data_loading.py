@@ -2,7 +2,12 @@ import streamlit as st
 import pandas as pd
 from typing import Optional, Tuple, List, Any
 
-from db_connection import get_mongodb_connection, close_mongodb_connection
+from db_connection import (
+    get_mongodb_connection,
+    close_mongodb_connection,
+    get_mariadb_connection,
+    close_mariadb_connection,
+)
 from loaders import LOADERS
 from data_filtering import filter_data_by_year, get_data_for_protocols
 
@@ -21,10 +26,20 @@ def cached_db_query(
     protocol_ids: Optional[List[str]] = None,
 ):
     """Cached database query function that handles the actual data retrieval"""
+    if metric not in LOADERS:
+        raise ValueError(f"Unknown metric: {metric}")
+
+    if metric == "ETÜ":
+        conn = get_mariadb_connection()
+        try:
+            df = LOADERS[metric](conn)
+            df = df.loc[:, ~df.columns.duplicated()]
+            return df
+        finally:
+            close_mariadb_connection(conn)
+
     db, client = get_mongodb_connection()
     try:
-        if metric not in LOADERS:
-            raise ValueError(f"Unknown metric: {metric}")
 
         # Handle different metric types
         if metric in ["GCS", "Schmerzen"]:

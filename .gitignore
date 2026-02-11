@@ -7,3 +7,8 @@ pages/toBeDone/evmAuswertungen.py
 data/ktw_sh_transport_status_history.csv
 .gitignore
 .streamlit/secrets.toml
+data/BKN Diagnosen.xlsx
+data/etu2024.csv
+data/Schleswig-Flensburg_herausgefilterte_Einzeldatensätze(1).csv
+mariadb_repo_setup
+mariadb_es_repo_setup

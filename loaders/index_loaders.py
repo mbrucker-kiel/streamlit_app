@@ -9,6 +9,7 @@ from data_helpers import (
     combine_date_time_fields,
     process_boolean_fields,
 )
+from db_connection import get_mariadb_connection, close_mariadb_connection
 
 load_dotenv()
 
@@ -97,34 +98,41 @@ def get_freetext(db, filters=None, limit=10000):
     return df
 
 
-def get_etu(db, filters=None, limit=10000):
-    query = {}
+def get_etu(db=None, filters=None):
+    conn = db if db is not None else get_mariadb_connection()
+    created_conn = db is None
+
+    query = "SELECT * FROM einsatzdaten"
+    params = []
+
     if filters:
-        query.update(filters)
+        clauses = []
+        for key, value in filters.items():
+            if value is None:
+                continue
 
-    # Add filter for Schleswig-Flensburg district
-    query["EO_LANDKREIS"] = "Schleswig-Flensburg"
+            if isinstance(value, (list, tuple, set)):
+                placeholders = ",".join(["?"] * len(value))
+                clauses.append(f"{key} IN ({placeholders})")
+                params.extend(list(value))
+            else:
+                clauses.append(f"{key} = ?")
+                params.append(value)
 
-    # Debug: Check if collection exists and get count
+        if clauses:
+            query += " WHERE " + " AND ".join(clauses)
+
+    query += " ORDER BY EINSATZBEGINN DESC"
+
     try:
-        collection_names = db.list_collection_names()
-        if "etu_leitstelle" not in collection_names:
-            return pd.DataFrame()
-
-        docs = list(
-            db.etu_leitstelle.find(query).sort("EINSATZBEGINN", -1).limit(limit)
-        )
-
-        docs = convert_objectid_to_str(docs)
-        if not docs:
-            return pd.DataFrame()
-
-        df = pd.DataFrame(docs)
+        df = pd.read_sql(query, conn, params=params)
         return df
-
     except Exception as e:
         print(f"ERROR in get_etu: {str(e)}")
         return pd.DataFrame()
+    finally:
+        if created_conn:
+            close_mariadb_connection(conn)
 
 
 def get_rtm_vorhaltung(db, filters=None, limit=10000):
