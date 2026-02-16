@@ -111,6 +111,16 @@ for idx, row in filtered_df.iterrows():
 
 if analysis_data:
     analysis_df = pd.DataFrame(analysis_data)
+    analysis_df["_start_sort"] = pd.to_datetime(
+        analysis_df["Start"],
+        format="%H:%M:%S",
+        errors="coerce",
+    )
+    analysis_df = analysis_df.sort_values(
+        by="_start_sort",
+        ascending=False,
+        na_position="last",
+    ).drop(columns=["_start_sort"])
     st.dataframe(analysis_df, use_container_width=True, hide_index=True)
     
     # Summary statistics
