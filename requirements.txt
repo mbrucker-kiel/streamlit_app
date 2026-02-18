@@ -11,4 +11,4 @@ folium
 streamlit-folium
 psycopg2-binary
 Authlib
-geopandas=1.1.2
+geopandas==1.1.2
