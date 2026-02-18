@@ -76,7 +76,7 @@ def cached_db_query(
 
 def data_loading(
     metric: str,
-    limit: int = 50000,
+    limit: int = None,  # None = unlimited
     med_name: Optional[str] = None,
     year_filter: Optional[Tuple[int, int]] = None,
 ):
@@ -85,10 +85,14 @@ def data_loading(
 
     Parameters:
     - metric: The type of data to load
-    - limit: Maximum number of records to return
+    - limit: Maximum number of records to return (None = unlimited)
     - med_name: Optional name of medication to filter by (only used with 'Medikamente' metric)
     - year_filter: Optional tuple (start_year, end_year) to filter by mission date
     """
+    # Set default limit to very high if None (effectively unlimited)
+    if limit is None:
+        limit = 999999
+    
     # If year filter is provided, get the protocol IDs for that year range
     if year_filter:
         start_year, end_year = year_filter
