@@ -289,9 +289,6 @@ result = result.sort_values("overall_total", ascending=False).reset_index(drop=T
 
 st.subheader("Auswertung nach Szenario")
 st.write("""
-**Hinweis:** Diese Auswertung berücksichtigt nur Rettungsdienst-Einsatzmittel (RTW, Typ „83").
-Ausgeschlossene Szenarien: Grundschadenart „KBF" (z.B. Brandmeldeanlagen, Fehlalarme).
-
 Die nachfolgenden Metriken zeigen:
 - **own_inside / external_inside:** Fahrzeuge, die Status 4 innerhalb der Wachbereiche meldeten
 - **own_outside / external_outside:** Fahrzeuge, die Status 4 außerhalb der Wachbereiche meldeten (z.B. Hilfeleistungen in Nordfriesland)
@@ -303,7 +300,6 @@ st.subheader("🗺️ Wachbereichanalyse: Inside/Outside-Einsätze nach Fahrzeug
 
 st.write("""
 **Kartenansicht:** Geografische Darstellung aller Einsätze gefiltert nach:
-- **Fahrzeugtyp:** RTW-Fahrzeuge (Kennung „83")
 - **Szenarien:** Standard-Notfalleinsätze (NOTF 01, NOTF 11, NOTF K, AKUT 01, FEU, etc.) – ausgenommen Grundschadenart „KBF"
 - **Farbcodierung:**
   - 🟢 Inside + Eigene Fahrzeuge
@@ -311,7 +307,6 @@ st.write("""
   - 🟣 Outside + Eigene Fahrzeuge
   - 🩷 Outside + Fremdfahrzeuge
 
-**Besonderheit:** Fahrzeuge 12, 13, 40, 44 fahren häufig nach Nordfriesland (außerhalb des Zuständigkeitsbereichs), was zu schlechteren Hilfsfristerreichungsgraden in den Wachbereichen führt.
 """)
 
 preselected_vehicles = [
@@ -520,7 +515,7 @@ Die detaillierten Kategorien zeigen, warum Hilfsfrist-Ziele verfehlt wurden – 
 
 **Nordfriesland-Hypothesis:**
 Insbesondere die Fahrzeuge 12, 13, 40 und 44 fahren sehr häufig nach Nordfriesland (Rettungswachenversorgungsbereiche außerhalb des Kreisgebiets).
-Dies führt zu Ausfallzeiten bei der Versorgung des eigenen Wachbereichs. Eine separate Analyse dieser Außeneinsätze wird empfohlen.
+Dies führt zu Ausfallzeiten bei der Versorgung des eigenen Wachbereichs.
 """)
 
 df_rtm = data_loading("RTM_Vorhaltung")
@@ -1124,36 +1119,6 @@ else:
                 f"hätte sich der Hilfsfristerreichungsgrad im Ergebnis um **{improvement:.1f}%** verbessern können."
             )
 
-            st.write("---")
-            st.write("**Ergebniszusammenfassung:**")
-            summary_data = pd.DataFrame([
-                {
-                    "Metrik": "Einsätze gesamt (inside Wachgebiet)",
-                    "Wert": f"{total_missions:,}",
-                    "Anteil": "100,0%"
-                },
-                {
-                    "Metrik": "Hilfsfrist OK (≤12 min)",
-                    "Wert": f"{total_missions - late_missions:,}",
-                    "Anteil": f"{current_rate:.1f}%"
-                },
-                {
-                    "Metrik": "Hilfsfrist verfehlt (>12 min)",
-                    "Wert": f"{late_missions:,}",
-                    "Anteil": f"{(late_missions/total_missions*100):.1f}%"
-                },
-                {
-                    "Metrik": "...davon: Alle Fahrzeuge gebunden + ≥1 außen",
-                    "Wert": f"{late_due_to_busy:,}",
-                    "Anteil": f"{(late_due_to_busy/late_missions*100):.1f}% der verspäteten"
-                },
-                {
-                    "Metrik": "Verbesserungspotenzial (bei Verfügbarkeit)",
-                    "Wert": f"+{improvement:.1f}%",
-                    "Anteil": f"{current_rate:.1f}% → {improved_rate:.1f}%"
-                }
-            ])
-            st.dataframe(summary_data, use_container_width=True, hide_index=True)
             
             # Store analysis results for later use in detailed analysis
             st.session_state["analysis_results"] = {
