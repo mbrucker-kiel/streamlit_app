@@ -14,3 +14,6 @@ Authlib
 geopandas==1.1.2
 boto3
 pyarrow
+splink==4.0.16
+duckdb==1.5.0
+pyyaml

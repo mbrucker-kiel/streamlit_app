@@ -1,16 +1,17 @@
 """
-Data transformers for the Bronze → Silver cleaning step.
+Data transformers for the Bronze to Silver cleaning step.
 
 All transformation functions are pure Python (no Streamlit dependency) and
 can be used from the Silver pipeline, Jupyter notebooks, or ML scripts.
 
 Design principle
 ----------------
-Each ``prepare_*`` function uses the **same loaders** the Streamlit dashboard
-uses (``loaders.LOADERS``), applies the **same merging/cleaning** the pages
-perform, and returns a fully-prepared DataFrame.  The Silver pipeline calls
-these functions once, stores the result in MinIO, and future consumers simply
-read the pre-cleaned Parquet files — no re-transformation needed.
+Each prepare_* function uses the same loaders the Streamlit dashboard uses
+(loaders.LOADERS), applies the same merging/cleaning the pages perform,
+enforces the einsatzdaten Data Contract schema, and returns a
+fully-prepared DataFrame.  The Silver pipeline calls these functions once,
+stores the result in MinIO, and future consumers simply read the pre-cleaned
+Parquet files - no re-transformation needed.
 """
 
 import hashlib
@@ -19,16 +20,24 @@ from typing import Optional
 
 import pandas as pd
 
-# Reuse the existing Eckpunktevereinbarung filter — single source of truth.
+# Reuse the existing Eckpunktevereinbarung filter - single source of truth.
 from data_filtering import reduce_etu_eckpunktevereinbarung
 from loaders import LOADERS
 
+# Schema contract for type enforcement and classified-field identification.
+from silver.schema_validator import (
+    enforce_schema,
+    get_classified_fields,
+    load_contract,
+)
+
 # ---------------------------------------------------------------------------
-# PII masking  (used by all prepare_* functions)
+# PII / classified field masking
 # ---------------------------------------------------------------------------
 
-# Columns known to carry personal data that must be anonymised
-_PII_FIELDS = [
+# Hard-coded fallback list - used when the contract file is unavailable.
+# The contract-derived list always takes precedence.
+_PII_FALLBACK = [
     "vorname",
     "nachname",
     "name",
@@ -43,7 +52,14 @@ _PII_FIELDS = [
 
 
 def _hash_value(value) -> Optional[str]:
-    """SHA-256 hash of a value; returns None for missing/empty inputs."""
+    """One-way SHA-256 hash of a PII value; returns None for missing inputs.
+
+    PII hashes use 32 hex chars (128 bits) for strong collision resistance:
+    the same real-world person must never hash to the same token as another.
+    This is intentionally longer than the 24-char unique_mission_id used in
+    matcher.py, which links records (not people) and has a much smaller
+    collision universe.
+    """
     if pd.isna(value) or value == "":
         return None
     return hashlib.sha256(str(value).encode("utf-8")).hexdigest()[:32]
@@ -51,21 +67,31 @@ def _hash_value(value) -> Optional[str]:
 
 def mask_pii(df: pd.DataFrame, extra_fields: Optional[list] = None) -> pd.DataFrame:
     """
-    Replace PII columns with a one-way hash (first 16 hex chars of SHA-256).
+    Replace classified/PII columns with a one-way SHA-256 hash (32 hex chars).
+
+    The list of columns to mask is taken from the einsatzdaten Data Contract
+    (silver/schema/einsatzdaten_contract.yaml), falling back to a
+    hard-coded list if the contract cannot be loaded.  Primary-key columns
+    (e.g. EINSATZ_NR) are excluded from masking even if tagged classified.
 
     Parameters
     ----------
     df : pd.DataFrame
-        Input data that may contain PII columns.
-    extra_fields : list[str], optional
-        Extra column names to mask beyond the default list.
+        Input data that may contain classified/PII columns.
+    extra_fields : list, optional
+        Additional column names to mask beyond the contract list.
 
     Returns
     -------
     pd.DataFrame
-        DataFrame with PII columns replaced by hashed values.
+        DataFrame with classified columns replaced by hashed values.
     """
-    fields_to_mask = _PII_FIELDS + (extra_fields or [])
+    try:
+        contract_fields = get_classified_fields()
+    except Exception:  # noqa: BLE001
+        contract_fields = _PII_FALLBACK
+
+    fields_to_mask = list(set(contract_fields + _PII_FALLBACK + (extra_fields or [])))
     df = df.copy()
     for col in fields_to_mask:
         if col in df.columns:
@@ -82,35 +108,31 @@ def prepare_nida_silver(db, limit: int = 999999) -> pd.DataFrame:
     """
     Build the prepared NIDA Silver dataset from a live MongoDB connection.
 
-    This reproduces **exactly** what the Streamlit pages do:
+    This reproduces exactly what the Streamlit pages do:
 
-    1. Load ``Index`` via ``LOADERS["Index"]`` (nida_index collection).
-    2. Load ``Details`` via ``LOADERS["Details"]`` (protocols_details collection).
-    3. Merge on ``protocolId`` (outer join, same as in the pages).
-    4. Drop the internal ``_id`` column from both sides.
-    5. Remove duplicate columns (same guard as ``data_loading.py``).
-    6. Mask PII fields.
-
-    The resulting DataFrame is ready for direct analysis – no further
-    transformation is needed by downstream consumers.
+    1. Load Index via LOADERS["Index"] (nida_index collection).
+    2. Load Details via LOADERS["Details"] (protocols_details).
+    3. Merge on protocolId (outer join, same as in the pages).
+    4. Drop the internal _id column from both sides.
+    5. Remove duplicate columns (same guard as data_loading.py).
+    6. Mask PII/classified fields.
 
     Parameters
     ----------
     db : pymongo.database.Database
-        An open MongoDB database handle (from ``get_mongodb_connection()``).
+        An open MongoDB database handle (from get_mongodb_connection()).
     limit : int
-        Maximum documents to fetch from each collection.  Defaults to
-        999 999 (effectively unlimited).
+        Maximum documents to fetch from each collection.
 
     Returns
     -------
     pd.DataFrame
         Merged, cleaned, PII-masked NIDA dataset.
     """
-    print("[transformers] Loading NIDA Index …")
+    print("[transformers] Loading NIDA Index ...")
     index_df = LOADERS["Index"](db, limit=limit)
 
-    print("[transformers] Loading NIDA Details …")
+    print("[transformers] Loading NIDA Details ...")
     details_df = LOADERS["Details"](db, limit=limit)
 
     if index_df.empty and details_df.empty:
@@ -138,7 +160,7 @@ def prepare_nida_silver(db, limit: int = 999999) -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
-# LST / ETU preparation  (mirrors the ETÜ loading + Eckpunktevereinbarung)
+# LST / ETU preparation  (mirrors ETU loading + Eckpunktevereinbarung)
 # ---------------------------------------------------------------------------
 
 # "Flo SL" prefix present on raw LST callsigns but absent from NIDA rufname
@@ -169,34 +191,33 @@ def prepare_etu_silver(
     """
     Build the prepared ETU/LST Silver dataset from a live MariaDB connection.
 
-    Steps (same logic as the Streamlit pages that use ETÜ data):
+    Steps (same logic as the Streamlit pages that use ETU data):
 
-    1. Load the full ``einsatzdaten`` table via ``LOADERS["ETÜ"]``.
-    2. Normalise callsigns: strip the "Flo SL" prefix from ``EINSATZMITTEL``
-       so they match NIDA ``rufname`` values.
-    3. Apply :func:`~data_filtering.reduce_etu_eckpunktevereinbarung` when
-       *start_date* / *end_date* are provided (Anlage 5 quality filter).
-       When no dates are given the full dataset is kept.
-    4. Deduplicate on ``EINSATZ_NR`` (keep the earliest ``ALARMIERT`` entry).
-    5. Remove duplicate columns.
-    6. Mask PII fields.
+    1. Load the full einsatzdaten table via LOADERS["ETU"].
+    2. Normalise callsigns: strip the "Flo SL" prefix from EINSATZMITTEL.
+    3. Apply reduce_etu_eckpunktevereinbarung when start_date/end_date given.
+    4. Deduplicate on EINSATZ_NR.
+    5. Enforce the einsatzdaten Data Contract schema (type casting +
+       validation of each column declared in the YAML contract).
+    6. Remove duplicate columns.
+    7. Mask classified/PII fields.
 
     Parameters
     ----------
     mariadb_conn
-        An open MariaDB connection (from ``get_mariadb_connection()``).
+        An open MariaDB connection (from get_mariadb_connection()).
     start_date : str or datetime-like, optional
-        Lower bound for the Eckpunktevereinbarung date filter (``ALARMIERT``).
+        Lower bound for the Eckpunktevereinbarung date filter (ALARMIERT).
     end_date : str or datetime-like, optional
         Upper bound (exclusive) for the date filter.
 
     Returns
     -------
     pd.DataFrame
-        Cleaned, deduplicated, PII-masked ETU dataset.
+        Schema-validated, deduplicated, PII-masked ETU dataset.
     """
-    print("[transformers] Loading ETU data from MariaDB …")
-    df = LOADERS["ETÜ"](mariadb_conn)
+    print("[transformers] Loading ETU data from MariaDB ...")
+    df = LOADERS["ETU"](mariadb_conn)
 
     if df.empty:
         return df
@@ -205,26 +226,35 @@ def prepare_etu_silver(
     if "EINSATZMITTEL" in df.columns:
         df["EINSATZMITTEL"] = df["EINSATZMITTEL"].apply(normalize_lst_callsign)
 
-    # 2. Eckpunktevereinbarung filter (only when date bounds are supplied)
+    # 2. Eckpunktevereinbarung filter / deduplication
     if start_date is not None and end_date is not None:
         df = reduce_etu_eckpunktevereinbarung(df, start_date, end_date)
     else:
-        # Without date bounds: still deduplicate on EINSATZ_NR
         if "EINSATZ_NR" in df.columns:
             if "ALARMIERT" in df.columns:
                 df = df.sort_values("ALARMIERT")
             df = df.drop_duplicates(subset=["EINSATZ_NR"], keep="first")
 
-    # 3. Remove duplicate columns
+    # 3. Enforce Data Contract schema (cast types, collect warnings)
+    try:
+        contract = load_contract()
+        df, schema_errors = enforce_schema(df, contract)
+        if schema_errors:
+            for err in schema_errors:
+                print(f"[transformers] Schema warning: {err}")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[transformers] Schema enforcement skipped: {exc}")
+
+    # 4. Remove duplicate columns
     df = df.loc[:, ~df.columns.duplicated()]
 
-    # 4. Mask PII
+    # 5. Mask classified/PII fields
     df = mask_pii(df)
     return df
 
 
 # ---------------------------------------------------------------------------
-# Linking LST ↔ NIDA
+# Linking LST <-> NIDA
 # ---------------------------------------------------------------------------
 
 
@@ -243,13 +273,13 @@ def link_lst_nida(
     Parameters
     ----------
     df_etu : pd.DataFrame
-        Output of :func:`prepare_etu_silver`.
+        Output of prepare_etu_silver.
     df_nida : pd.DataFrame
-        Output of :func:`prepare_nida_silver`.
+        Output of prepare_nida_silver.
     etu_key : str
-        Join key in the ETU frame (default: ``EINSATZ_NR``).
+        Join key in the ETU frame (default: EINSATZ_NR).
     nida_key : str
-        Join key in the NIDA frame (default: ``ein_nr_lst``).
+        Join key in the NIDA frame (default: ein_nr_lst).
 
     Returns
     -------

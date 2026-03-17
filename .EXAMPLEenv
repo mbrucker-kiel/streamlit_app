@@ -37,3 +37,6 @@ BRONZE_NIDA_DETAILS_KEY=nida/details.parquet
 # (Eckpunktevereinbarung Anlage 5 date range – leave empty to keep all data)
 SILVER_START_DATE=
 SILVER_END_DATE=
+
+# Minimum Splink match_probability to include in the match table (0.0–1.0)
+SILVER_MATCH_THRESHOLD=0.7

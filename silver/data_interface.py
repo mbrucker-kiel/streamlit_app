@@ -1,59 +1,131 @@
 """
-Silver-layer data interface.
+Silver-layer data interface backed by DuckDB.
 
-Provides a single, stable entry-point for loading *prepared* (Silver) data.
-All functions are pure Python – no Streamlit dependency – so they work from:
+Provides a single, stable entry-point for loading *prepared* (Silver) data
+from MinIO.  Contractors and ML engineers only need to know the dataset
+name and optional column filters -- no knowledge of S3 folder structure,
+Parquet layout, or database credentials is required.
+
+All functions are pure Python (no Streamlit dependency) and work from:
   * Streamlit pages
   * Jupyter notebooks
   * ML training scripts
   * External contractor tooling
 
+Query modes
+-----------
+1. Dict filter  (simple equality / list-in filter):
+
+       df = query_silver("etu", filter={"EINSATZMITTELTYP": "RTW"})
+
+2. Raw SQL  (full DuckDB SQL, table name is the dataset name):
+
+       df = query_silver("linked", sql="SELECT * FROM linked LIMIT 100")
+
+How it works
+------------
+Each call to query_silver:
+  1. Downloads the requested Silver Parquet file from MinIO into memory via
+     the existing minio_client (boto3).
+  2. Registers the in-memory DataFrame as a DuckDB virtual table.
+  3. Executes the filter/SQL predicate entirely inside DuckDB.
+  4. Returns the result as a pandas DataFrame.
+
+The DuckDB approach gives contractors the full power of SQL (window
+functions, aggregations, JOINs across datasets) without exposing raw
+S3 credentials or requiring any local file system setup.
+
 Usage example::
 
-    from silver.data_interface import get_silver_etu, get_silver_nida, get_silver_linked
+    from silver.data_interface import query_silver
 
-    # All ETU missions filtered to only RTW vehicles
-    df = get_silver_etu(filters={"EINSATZMITTELTYP": "Rettungswagen (RTW)"})
+    # Simple filter
+    df = query_silver("etu", filter={"EINSATZMITTELTYP": "Rettungswagen (RTW)"})
 
-    # Fully linked ETU + NIDA dataset (primary dataset for analysis)
-    df = get_silver_linked()
+    # Multiple values in filter
+    df = query_silver("etu", filter={"EINSATZMITTELTYP": ["RTW", "NEF"]})
 
-    # Generic entry-point
-    df = query_silver("linked")
+    # Raw SQL across a dataset
+    df = query_silver("linked", sql=\"\"\"
+        SELECT EINSATZ_NR, EINSATZMITTELTYP, COUNT(*) AS n
+        FROM   linked
+        GROUP  BY 1, 2
+        ORDER  BY 3 DESC
+    \"\"\")
+
+    # Cross-dataset analysis: join ETU matches with NIDA data
+    df = query_silver_sql(\"\"\"
+        SELECT m.unique_mission_id,
+               m.match_probability,
+               e.EINSATZMITTELTYP,
+               n.missionType
+        FROM   matches  m
+        JOIN   etu      e ON e.EINSATZ_NR  = m.einsatz_nr
+        JOIN   nida     n ON n.ein_nr_lst  = m.einsatz_nr
+        WHERE  m.match_probability >= 0.9
+    \"\"\")
 """
 
 from __future__ import annotations
 
-import os
 from typing import Optional
 
+import duckdb
 import pandas as pd
 
-from silver.minio_client import SILVER_BUCKET, list_objects, read_parquet
+from silver.minio_client import SILVER_BUCKET, read_parquet
 
-# Object keys – must stay in sync with silver/pipeline.py
-_SILVER_NIDA_KEY = "nida/nida_silver.parquet"
-_SILVER_ETU_KEY = "etu/etu_silver.parquet"
-_SILVER_LINKED_KEY = "linked/etu_nida_silver.parquet"
-
-_CACHE_TTL = int(os.getenv("SILVER_CACHE_TTL", "3600"))
+# Object keys -- must stay in sync with silver/pipeline.py
+_DATASETS: dict = {
+    "nida": "nida/nida_silver.parquet",
+    "etu": "etu/etu_silver.parquet",
+    "linked": "linked/etu_nida_silver.parquet",
+    "matches": "matches/etu_nida_matches.parquet",
+}
 
 
 # ---------------------------------------------------------------------------
-# Low-level read helper
+# Internal helpers
 # ---------------------------------------------------------------------------
 
 
-def _read_silver(object_key: str) -> pd.DataFrame:
-    """Read a Silver Parquet file, returning an empty DataFrame on failure."""
-    df = read_parquet(object_key, bucket=SILVER_BUCKET)
+def _load_dataset(name: str) -> pd.DataFrame:
+    """Read a Silver Parquet file from MinIO into a DataFrame."""
+    if name not in _DATASETS:
+        raise ValueError(
+            f"Unknown Silver dataset '{name}'. "
+            f"Valid options: {sorted(_DATASETS.keys())}"
+        )
+    key = _DATASETS[name]
+    df = read_parquet(key, bucket=SILVER_BUCKET)
     if df.empty:
         print(
-            f"[data_interface] Silver data not found at "
-            f"s3://{SILVER_BUCKET}/{object_key}. "
+            f"[data_interface] Silver dataset '{name}' not found at "
+            f"s3://{SILVER_BUCKET}/{key}. "
             "Run silver.pipeline.run_pipeline() first."
         )
     return df
+
+
+def _build_where_clause(filters: dict) -> tuple:
+    """
+    Convert a filter dict into a DuckDB parameterised WHERE clause.
+
+    Supports scalar equality (col = ?) and list membership (col IN (?,...)).
+    Returns (where_sql, params_list).
+    """
+    clauses = []
+    params = []
+    for col, value in filters.items():
+        if isinstance(value, (list, tuple, set)):
+            placeholders = ", ".join(["?"] * len(value))
+            clauses.append(f'"{col}" IN ({placeholders})')
+            params.extend(list(value))
+        else:
+            clauses.append(f'"{col}" = ?')
+            params.append(value)
+    where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+    return where, params
 
 
 # ---------------------------------------------------------------------------
@@ -61,127 +133,108 @@ def _read_silver(object_key: str) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 
 
-def get_silver_etu(filters: Optional[dict] = None) -> pd.DataFrame:
-    """
-    Return the prepared Silver ETU/LST (Leitstelle/Dispatch) dataset.
-
-    This is the output of :func:`~silver.transformers.prepare_etu_silver`:
-    all ETU records with normalised callsigns, optional Eckpunktevereinbarung
-    filter applied, deduplicated on ``EINSATZ_NR``, and PII masked.
-
-    Parameters
-    ----------
-    filters : dict, optional
-        Column-based equality filters, e.g.
-        ``{"EINSATZMITTELTYP": "Rettungswagen (RTW)"}``.
-
-    Returns
-    -------
-    pd.DataFrame
-        Prepared ETU data ready for direct analysis.
-    """
-    df = _read_silver(_SILVER_ETU_KEY)
-    return _apply_filters(df, filters)
-
-
-def get_silver_nida(filters: Optional[dict] = None) -> pd.DataFrame:
-    """
-    Return the prepared Silver NIDA dataset.
-
-    This is the output of :func:`~silver.transformers.prepare_nida_silver`:
-    NIDA Index and Details merged on ``protocolId`` (exactly as every
-    Streamlit page does), with duplicate columns removed and PII masked.
-
-    Parameters
-    ----------
-    filters : dict, optional
-        Column-based equality filters.
-
-    Returns
-    -------
-    pd.DataFrame
-        Prepared NIDA data ready for direct analysis.
-    """
-    df = _read_silver(_SILVER_NIDA_KEY)
-    return _apply_filters(df, filters)
-
-
-def get_silver_linked(filters: Optional[dict] = None) -> pd.DataFrame:
-    """
-    Return the fully linked ETU + NIDA Silver dataset.
-
-    Each row is one ETU mission enriched with NIDA protocol attributes.
-    This is the primary dataset for contractor analysis and ML applications.
-
-    Parameters
-    ----------
-    filters : dict, optional
-        Column-based equality filters applied after loading.
-
-    Returns
-    -------
-    pd.DataFrame
-        Linked, prepared data ready for direct analysis.
-    """
-    df = _read_silver(_SILVER_LINKED_KEY)
-    return _apply_filters(df, filters)
-
-
 def query_silver(
     dataset: str,
-    filters: Optional[dict] = None,
+    filter: Optional[dict] = None,  # noqa: A002
+    sql: Optional[str] = None,
 ) -> pd.DataFrame:
     """
-    Unified entry-point for loading any Silver dataset by name.
+    Query a Silver dataset using DuckDB.
 
     Parameters
     ----------
-    dataset : {"etu", "nida", "linked"}
-        Which Silver dataset to load.
-    filters : dict, optional
-        Column-based equality filters.
+    dataset : {"etu", "nida", "linked", "matches"}
+        Which Silver dataset to query.
+    filter : dict, optional
+        Column equality filters.  Supports scalar and list values, e.g.::
+
+            {"EINSATZMITTELTYP": "Rettungswagen (RTW)"}
+            {"EINSATZMITTELTYP": ["Rettungswagen (RTW)", "NEF"]}
+
+    sql : str, optional
+        Full DuckDB SQL statement.  The dataset is available as a virtual
+        table with the same name as the *dataset* argument.  When *sql* is
+        provided, *filter* is ignored.
 
     Returns
     -------
     pd.DataFrame
+        Query results.
 
     Raises
     ------
     ValueError
-        If *dataset* is not one of the known names.
+        If *dataset* is not a known name.
     """
-    _handlers = {
-        "etu": get_silver_etu,
-        "nida": get_silver_nida,
-        "linked": get_silver_linked,
-    }
-    if dataset not in _handlers:
-        raise ValueError(
-            f"Unknown Silver dataset '{dataset}'. "
-            f"Valid options: {sorted(_handlers.keys())}"
-        )
-    return _handlers[dataset](filters=filters)
+    df_source = _load_dataset(dataset)
+    if df_source.empty:
+        return df_source
+
+    conn = duckdb.connect()
+    conn.register(dataset, df_source)
+
+    if sql:
+        return conn.execute(sql).df()
+
+    if filter:
+        where, params = _build_where_clause(filter)
+        stmt = f'SELECT * FROM "{dataset}" {where}'
+        return conn.execute(stmt, params).df()
+
+    return conn.execute(f'SELECT * FROM "{dataset}"').df()
+
+
+def query_silver_sql(sql: str) -> pd.DataFrame:
+    """
+    Execute arbitrary DuckDB SQL across *all* Silver datasets simultaneously.
+
+    All datasets are pre-registered as virtual tables:
+      * ``etu``     -- ETU/LST dispatch data
+      * ``nida``    -- NIDA protocol data
+      * ``linked``  -- ETU left-joined with NIDA
+      * ``matches`` -- Splink match table with unique_mission_id
+
+    Datasets that are not yet available in MinIO are registered as empty
+    DataFrames so the SQL still runs (rows simply won't appear).
+
+    Parameters
+    ----------
+    sql : str
+        DuckDB SQL statement that may reference any of the four table names.
+
+    Returns
+    -------
+    pd.DataFrame
+    """
+    conn = duckdb.connect()
+
+    for name in _DATASETS:
+        df = read_parquet(_DATASETS[name], bucket=SILVER_BUCKET)
+        conn.register(name, df if not df.empty else pd.DataFrame())
+
+    return conn.execute(sql).df()
+
+
+def get_silver_etu(filter: Optional[dict] = None) -> pd.DataFrame:  # noqa: A002
+    """Return the prepared Silver ETU dataset, optionally filtered."""
+    return query_silver("etu", filter=filter)
+
+
+def get_silver_nida(filter: Optional[dict] = None) -> pd.DataFrame:  # noqa: A002
+    """Return the prepared Silver NIDA dataset, optionally filtered."""
+    return query_silver("nida", filter=filter)
+
+
+def get_silver_linked(filter: Optional[dict] = None) -> pd.DataFrame:  # noqa: A002
+    """Return the Silver ETU + NIDA linked dataset, optionally filtered."""
+    return query_silver("linked", filter=filter)
+
+
+def get_silver_matches(filter: Optional[dict] = None) -> pd.DataFrame:  # noqa: A002
+    """Return the Splink match table (unique_mission_id, match_probability)."""
+    return query_silver("matches", filter=filter)
 
 
 def list_silver_datasets() -> list:
-    """Return the object keys of all available Silver Parquet files."""
-    return list_objects(prefix="", bucket=SILVER_BUCKET)
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _apply_filters(df: pd.DataFrame, filters: Optional[dict]) -> pd.DataFrame:
-    """Apply simple equality filters to *df*."""
-    if df.empty or not filters:
-        return df
-    mask = pd.Series(True, index=df.index)
-    for col, value in filters.items():
-        if col in df.columns:
-            if isinstance(value, (list, tuple, set)):
-                mask &= df[col].isin(value)
-            else:
-                mask &= df[col] == value
-    return df[mask].reset_index(drop=True)
+    """Return the known Silver dataset names."""
+    return sorted(_DATASETS.keys())
