@@ -1,11 +1,16 @@
 """
 Data transformers for the Bronze → Silver cleaning step.
 
-All transformation functions are plain Python – no Streamlit dependency – so
-they can be used both from the Silver pipeline and from within the Streamlit app.
+All transformation functions are pure Python (no Streamlit dependency) and
+can be used from the Silver pipeline, Jupyter notebooks, or ML scripts.
 
-The existing ``data_filtering.py`` helpers are imported directly so that the
-cleaning logic is defined in exactly one place.
+Design principle
+----------------
+Each ``prepare_*`` function uses the **same loaders** the Streamlit dashboard
+uses (``loaders.LOADERS``), applies the **same merging/cleaning** the pages
+perform, and returns a fully-prepared DataFrame.  The Silver pipeline calls
+these functions once, stores the result in MinIO, and future consumers simply
+read the pre-cleaned Parquet files — no re-transformation needed.
 """
 
 import hashlib
@@ -14,163 +19,15 @@ from typing import Optional
 
 import pandas as pd
 
-# Reuse the existing Eckpunktevereinbarung filter that already lives in
-# data_filtering.py – no duplication.
+# Reuse the existing Eckpunktevereinbarung filter — single source of truth.
 from data_filtering import reduce_etu_eckpunktevereinbarung
+from loaders import LOADERS
 
 # ---------------------------------------------------------------------------
-# LST / Dispatch transformers
+# PII masking  (used by all prepare_* functions)
 # ---------------------------------------------------------------------------
 
-# Prefix that appears on LST callsigns but not on NIDA rufname
-_FLO_SL_PREFIX = re.compile(r"^Flo\s+SL\s*", re.IGNORECASE)
-
-
-def normalize_lst_callsign(callsign: str) -> Optional[str]:
-    """
-    Strip the "Flo SL" prefix from a raw LST callsign.
-
-    Examples
-    --------
-    >>> normalize_lst_callsign("Flo SL RTW 1")
-    'RTW 1'
-    >>> normalize_lst_callsign("Flo SL S-KTW 2")
-    'S-KTW 2'
-    >>> normalize_lst_callsign("RTW 1")
-    'RTW 1'
-    """
-    if pd.isna(callsign):
-        return None
-    return _FLO_SL_PREFIX.sub("", str(callsign)).strip()
-
-
-def clean_lst(
-    df_lst: pd.DataFrame,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-) -> pd.DataFrame:
-    """
-    Apply the full LST Silver transformation:
-
-    1. Normalise callsigns (strip "Flo SL" prefix from ``EINSATZMITTEL``).
-    2. Apply :func:`~data_filtering.reduce_etu_eckpunktevereinbarung` when
-       *start_date* / *end_date* are given.
-    3. Deduplicate on ``EINSATZ_NR`` (keep first occurrence after sorting by
-       alarm time).
-
-    Parameters
-    ----------
-    df_lst : pd.DataFrame
-        Raw Bronze LST data.
-    start_date : str or datetime-like, optional
-        Lower bound for the Eckpunktevereinbarung filter.  If omitted the
-        entire date range is kept.
-    end_date : str or datetime-like, optional
-        Upper bound (exclusive) for the filter.
-
-    Returns
-    -------
-    pd.DataFrame
-        Cleaned LST data.
-    """
-    if df_lst.empty:
-        return df_lst
-
-    df = df_lst.copy()
-
-    # 1. Normalise callsign
-    if "EINSATZMITTEL" in df.columns:
-        df["EINSATZMITTEL"] = df["EINSATZMITTEL"].apply(normalize_lst_callsign)
-
-    # 2. Eckpunktevereinbarung filter (requires date bounds)
-    if start_date is not None and end_date is not None:
-        df = reduce_etu_eckpunktevereinbarung(df, start_date, end_date)
-
-    # 3. Deduplicate – reduce_etu_eckpunktevereinbarung already does this
-    #    when start/end dates are provided; apply it here as a safety net
-    #    for the no-date path too.
-    if "EINSATZ_NR" in df.columns and not df.empty:
-        if "ALARMIERT" in df.columns:
-            df = df.sort_values("ALARMIERT")
-        df = df.drop_duplicates(subset=["EINSATZ_NR"], keep="first")
-
-    return df
-
-
-# ---------------------------------------------------------------------------
-# NIDA transformers
-# ---------------------------------------------------------------------------
-
-
-def combine_nida_alarm_datetime(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Merge the split ``datum_alarm`` and ``zeit_alarm`` fields into a single
-    ``alarm_datetime`` column.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Raw NIDA index data containing ``datum_alarm`` and ``zeit_alarm``.
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame with an additional ``alarm_datetime`` column (datetime64).
-    """
-    if df.empty:
-        return df
-
-    df = df.copy()
-
-    if "datum_alarm" in df.columns and "zeit_alarm" in df.columns:
-        df["alarm_datetime"] = pd.to_datetime(
-            df["datum_alarm"].astype(str) + " " + df["zeit_alarm"].astype(str),
-            dayfirst=True,
-            errors="coerce",
-        )
-
-    return df
-
-
-def clean_nida(df_nida: pd.DataFrame) -> pd.DataFrame:
-    """
-    Apply the full NIDA Silver transformation:
-
-    1. Combine split date/time alarm fields into ``alarm_datetime``.
-    2. Deduplicate on ``ein_nr_lst`` (keeping the most recent alarm_datetime).
-    3. Mask PII fields (see :func:`mask_pii`).
-
-    Parameters
-    ----------
-    df_nida : pd.DataFrame
-        Raw Bronze NIDA index data.
-
-    Returns
-    -------
-    pd.DataFrame
-        Cleaned NIDA data.
-    """
-    if df_nida.empty:
-        return df_nida
-
-    df = combine_nida_alarm_datetime(df_nida)
-
-    # Deduplicate on mission-link field – keep the most recent protocol
-    if "ein_nr_lst" in df.columns:
-        if "alarm_datetime" in df.columns:
-            df = df.sort_values("alarm_datetime", ascending=False)
-        df = df.drop_duplicates(subset=["ein_nr_lst"], keep="first")
-
-    df = mask_pii(df)
-
-    return df
-
-
-# ---------------------------------------------------------------------------
-# PII masking
-# ---------------------------------------------------------------------------
-
-# Fields known to contain personal data that must be masked for contractor use
+# Columns known to carry personal data that must be anonymised
 _PII_FIELDS = [
     "vorname",
     "nachname",
@@ -186,22 +43,22 @@ _PII_FIELDS = [
 
 
 def _hash_value(value) -> Optional[str]:
-    """SHA-256 hash of a value, returning None for missing/empty inputs."""
+    """SHA-256 hash of a value; returns None for missing/empty inputs."""
     if pd.isna(value) or value == "":
         return None
-    return hashlib.sha256(str(value).encode("utf-8")).hexdigest()[:16]
+    return hashlib.sha256(str(value).encode("utf-8")).hexdigest()[:32]
 
 
 def mask_pii(df: pd.DataFrame, extra_fields: Optional[list] = None) -> pd.DataFrame:
     """
-    Replace PII fields with a one-way hash (first 16 hex chars of SHA-256).
+    Replace PII columns with a one-way hash (first 16 hex chars of SHA-256).
 
     Parameters
     ----------
     df : pd.DataFrame
         Input data that may contain PII columns.
     extra_fields : list[str], optional
-        Additional column names to mask beyond the default list.
+        Extra column names to mask beyond the default list.
 
     Returns
     -------
@@ -217,44 +74,199 @@ def mask_pii(df: pd.DataFrame, extra_fields: Optional[list] = None) -> pd.DataFr
 
 
 # ---------------------------------------------------------------------------
+# NIDA preparation  (mirrors the Index + Details merge every page performs)
+# ---------------------------------------------------------------------------
+
+
+def prepare_nida_silver(db, limit: int = 999999) -> pd.DataFrame:
+    """
+    Build the prepared NIDA Silver dataset from a live MongoDB connection.
+
+    This reproduces **exactly** what the Streamlit pages do:
+
+    1. Load ``Index`` via ``LOADERS["Index"]`` (nida_index collection).
+    2. Load ``Details`` via ``LOADERS["Details"]`` (protocols_details collection).
+    3. Merge on ``protocolId`` (outer join, same as in the pages).
+    4. Drop the internal ``_id`` column from both sides.
+    5. Remove duplicate columns (same guard as ``data_loading.py``).
+    6. Mask PII fields.
+
+    The resulting DataFrame is ready for direct analysis – no further
+    transformation is needed by downstream consumers.
+
+    Parameters
+    ----------
+    db : pymongo.database.Database
+        An open MongoDB database handle (from ``get_mongodb_connection()``).
+    limit : int
+        Maximum documents to fetch from each collection.  Defaults to
+        999 999 (effectively unlimited).
+
+    Returns
+    -------
+    pd.DataFrame
+        Merged, cleaned, PII-masked NIDA dataset.
+    """
+    print("[transformers] Loading NIDA Index …")
+    index_df = LOADERS["Index"](db, limit=limit)
+
+    print("[transformers] Loading NIDA Details …")
+    details_df = LOADERS["Details"](db, limit=limit)
+
+    if index_df.empty and details_df.empty:
+        return pd.DataFrame()
+
+    # Merge exactly as the Streamlit pages do
+    if not index_df.empty and not details_df.empty:
+        merged = pd.merge(
+            index_df.drop(columns=["_id"], errors="ignore"),
+            details_df.drop(columns=["_id"], errors="ignore"),
+            on="protocolId",
+            how="outer",
+            suffixes=("", "_details"),
+        )
+    elif not index_df.empty:
+        merged = index_df.drop(columns=["_id"], errors="ignore")
+    else:
+        merged = details_df.drop(columns=["_id"], errors="ignore")
+
+    # Remove duplicate columns (same guard used in data_loading.cached_db_query)
+    merged = merged.loc[:, ~merged.columns.duplicated()]
+
+    merged = mask_pii(merged)
+    return merged
+
+
+# ---------------------------------------------------------------------------
+# LST / ETU preparation  (mirrors the ETÜ loading + Eckpunktevereinbarung)
+# ---------------------------------------------------------------------------
+
+# "Flo SL" prefix present on raw LST callsigns but absent from NIDA rufname
+_FLO_SL_PREFIX = re.compile(r"^Flo\s+SL\s*", re.IGNORECASE)
+
+
+def normalize_lst_callsign(callsign: str) -> Optional[str]:
+    """
+    Strip the "Flo SL" prefix from a raw LST callsign.
+
+    Examples
+    --------
+    >>> normalize_lst_callsign("Flo SL RTW 1")
+    'RTW 1'
+    >>> normalize_lst_callsign("RTW 1")
+    'RTW 1'
+    """
+    if pd.isna(callsign):
+        return None
+    return _FLO_SL_PREFIX.sub("", str(callsign)).strip()
+
+
+def prepare_etu_silver(
+    mariadb_conn,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+) -> pd.DataFrame:
+    """
+    Build the prepared ETU/LST Silver dataset from a live MariaDB connection.
+
+    Steps (same logic as the Streamlit pages that use ETÜ data):
+
+    1. Load the full ``einsatzdaten`` table via ``LOADERS["ETÜ"]``.
+    2. Normalise callsigns: strip the "Flo SL" prefix from ``EINSATZMITTEL``
+       so they match NIDA ``rufname`` values.
+    3. Apply :func:`~data_filtering.reduce_etu_eckpunktevereinbarung` when
+       *start_date* / *end_date* are provided (Anlage 5 quality filter).
+       When no dates are given the full dataset is kept.
+    4. Deduplicate on ``EINSATZ_NR`` (keep the earliest ``ALARMIERT`` entry).
+    5. Remove duplicate columns.
+    6. Mask PII fields.
+
+    Parameters
+    ----------
+    mariadb_conn
+        An open MariaDB connection (from ``get_mariadb_connection()``).
+    start_date : str or datetime-like, optional
+        Lower bound for the Eckpunktevereinbarung date filter (``ALARMIERT``).
+    end_date : str or datetime-like, optional
+        Upper bound (exclusive) for the date filter.
+
+    Returns
+    -------
+    pd.DataFrame
+        Cleaned, deduplicated, PII-masked ETU dataset.
+    """
+    print("[transformers] Loading ETU data from MariaDB …")
+    df = LOADERS["ETÜ"](mariadb_conn)
+
+    if df.empty:
+        return df
+
+    # 1. Normalise callsigns
+    if "EINSATZMITTEL" in df.columns:
+        df["EINSATZMITTEL"] = df["EINSATZMITTEL"].apply(normalize_lst_callsign)
+
+    # 2. Eckpunktevereinbarung filter (only when date bounds are supplied)
+    if start_date is not None and end_date is not None:
+        df = reduce_etu_eckpunktevereinbarung(df, start_date, end_date)
+    else:
+        # Without date bounds: still deduplicate on EINSATZ_NR
+        if "EINSATZ_NR" in df.columns:
+            if "ALARMIERT" in df.columns:
+                df = df.sort_values("ALARMIERT")
+            df = df.drop_duplicates(subset=["EINSATZ_NR"], keep="first")
+
+    # 3. Remove duplicate columns
+    df = df.loc[:, ~df.columns.duplicated()]
+
+    # 4. Mask PII
+    df = mask_pii(df)
+    return df
+
+
+# ---------------------------------------------------------------------------
 # Linking LST ↔ NIDA
 # ---------------------------------------------------------------------------
 
 
 def link_lst_nida(
-    df_lst: pd.DataFrame,
+    df_etu: pd.DataFrame,
     df_nida: pd.DataFrame,
-    lst_key: str = "EINSATZ_NR",
+    etu_key: str = "EINSATZ_NR",
     nida_key: str = "ein_nr_lst",
 ) -> pd.DataFrame:
     """
-    Join cleaned LST and NIDA DataFrames on their shared mission identifier.
+    Join the prepared ETU and NIDA Silver DataFrames on their shared mission ID.
+
+    The result has one row per ETU mission, enriched with NIDA protocol
+    attributes where a matching protocol exists.
 
     Parameters
     ----------
-    df_lst : pd.DataFrame
-        Cleaned LST data (output of :func:`clean_lst`).
+    df_etu : pd.DataFrame
+        Output of :func:`prepare_etu_silver`.
     df_nida : pd.DataFrame
-        Cleaned NIDA data (output of :func:`clean_nida`).
-    lst_key : str
-        Join key column in the LST frame.
+        Output of :func:`prepare_nida_silver`.
+    etu_key : str
+        Join key in the ETU frame (default: ``EINSATZ_NR``).
     nida_key : str
-        Join key column in the NIDA frame.
+        Join key in the NIDA frame (default: ``ein_nr_lst``).
 
     Returns
     -------
     pd.DataFrame
-        Left-joined result: all LST rows enriched with NIDA attributes.
+        Left-joined result enriched with NIDA attributes.
         Returns an empty DataFrame if either input is empty.
     """
-    if df_lst.empty or df_nida.empty:
+    if df_etu.empty or df_nida.empty:
         return pd.DataFrame()
 
     linked = pd.merge(
-        df_lst,
-        df_nida.rename(columns={nida_key: lst_key}),
-        on=lst_key,
+        df_etu,
+        df_nida.rename(columns={nida_key: etu_key}),
+        on=etu_key,
         how="left",
-        suffixes=("_lst", "_nida"),
+        suffixes=("_etu", "_nida"),
     )
+    # Remove any duplicate columns introduced by the merge
+    linked = linked.loc[:, ~linked.columns.duplicated()]
     return linked

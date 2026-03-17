@@ -1,5 +1,5 @@
 """
-silver – Bronze → Silver data pipeline.
+silver – database → Silver data pipeline.
 
 Public API::
 
@@ -9,8 +9,8 @@ Public API::
 
 from silver.pipeline import run_pipeline
 from silver.data_interface import (
+    get_silver_etu,
     get_silver_linked,
-    get_silver_lst,
     get_silver_nida,
     list_silver_datasets,
     query_silver,
@@ -19,7 +19,7 @@ from silver.data_interface import (
 __all__ = [
     "run_pipeline",
     "query_silver",
-    "get_silver_lst",
+    "get_silver_etu",
     "get_silver_nida",
     "get_silver_linked",
     "list_silver_datasets",

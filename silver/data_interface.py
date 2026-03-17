@@ -10,10 +10,16 @@ All functions are pure Python – no Streamlit dependency – so they work from:
 
 Usage example::
 
-    from silver.data_interface import get_silver_lst, get_silver_nida, get_silver_linked
+    from silver.data_interface import get_silver_etu, get_silver_nida, get_silver_linked
 
+    # All ETU missions filtered to only RTW vehicles
+    df = get_silver_etu(filters={"EINSATZMITTELTYP": "Rettungswagen (RTW)"})
+
+    # Fully linked ETU + NIDA dataset (primary dataset for analysis)
     df = get_silver_linked()
-    print(df.head())
+
+    # Generic entry-point
+    df = query_silver("linked")
 """
 
 from __future__ import annotations
@@ -25,18 +31,16 @@ import pandas as pd
 
 from silver.minio_client import SILVER_BUCKET, list_objects, read_parquet
 
-# Object-key constants – must match silver/pipeline.py
-_SILVER_LST_KEY = "lst/einsatzdaten_silver.parquet"
-_SILVER_NIDA_KEY = "nida/index_silver.parquet"
-_SILVER_LINKED_KEY = "linked/lst_nida_silver.parquet"
+# Object keys – must stay in sync with silver/pipeline.py
+_SILVER_NIDA_KEY = "nida/nida_silver.parquet"
+_SILVER_ETU_KEY = "etu/etu_silver.parquet"
+_SILVER_LINKED_KEY = "linked/etu_nida_silver.parquet"
 
-# Opt-in TTL for the in-process LRU cache (seconds).
-# Set SILVER_CACHE_TTL=0 in the environment to disable caching.
 _CACHE_TTL = int(os.getenv("SILVER_CACHE_TTL", "3600"))
 
 
 # ---------------------------------------------------------------------------
-# Low-level read helpers
+# Low-level read helper
 # ---------------------------------------------------------------------------
 
 
@@ -57,9 +61,13 @@ def _read_silver(object_key: str) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 
 
-def get_silver_lst(filters: Optional[dict] = None) -> pd.DataFrame:
+def get_silver_etu(filters: Optional[dict] = None) -> pd.DataFrame:
     """
-    Return the cleaned Silver LST (Leitstelle/Dispatch) data.
+    Return the prepared Silver ETU/LST (Leitstelle/Dispatch) dataset.
+
+    This is the output of :func:`~silver.transformers.prepare_etu_silver`:
+    all ETU records with normalised callsigns, optional Eckpunktevereinbarung
+    filter applied, deduplicated on ``EINSATZ_NR``, and PII masked.
 
     Parameters
     ----------
@@ -70,15 +78,19 @@ def get_silver_lst(filters: Optional[dict] = None) -> pd.DataFrame:
     Returns
     -------
     pd.DataFrame
-        Cleaned LST data ready for analysis.
+        Prepared ETU data ready for direct analysis.
     """
-    df = _read_silver(_SILVER_LST_KEY)
+    df = _read_silver(_SILVER_ETU_KEY)
     return _apply_filters(df, filters)
 
 
 def get_silver_nida(filters: Optional[dict] = None) -> pd.DataFrame:
     """
-    Return the cleaned Silver NIDA index data.
+    Return the prepared Silver NIDA dataset.
+
+    This is the output of :func:`~silver.transformers.prepare_nida_silver`:
+    NIDA Index and Details merged on ``protocolId`` (exactly as every
+    Streamlit page does), with duplicate columns removed and PII masked.
 
     Parameters
     ----------
@@ -88,7 +100,7 @@ def get_silver_nida(filters: Optional[dict] = None) -> pd.DataFrame:
     Returns
     -------
     pd.DataFrame
-        Cleaned NIDA data ready for analysis.
+        Prepared NIDA data ready for direct analysis.
     """
     df = _read_silver(_SILVER_NIDA_KEY)
     return _apply_filters(df, filters)
@@ -96,11 +108,10 @@ def get_silver_nida(filters: Optional[dict] = None) -> pd.DataFrame:
 
 def get_silver_linked(filters: Optional[dict] = None) -> pd.DataFrame:
     """
-    Return the Silver data that links LST and NIDA records.
+    Return the fully linked ETU + NIDA Silver dataset.
 
-    This is the primary dataset for contractor analysis and ML applications:
-    LST missions are enriched with NIDA protocol attributes so that each row
-    represents one mission with dispatch *and* clinical protocol fields.
+    Each row is one ETU mission enriched with NIDA protocol attributes.
+    This is the primary dataset for contractor analysis and ML applications.
 
     Parameters
     ----------
@@ -110,7 +121,7 @@ def get_silver_linked(filters: Optional[dict] = None) -> pd.DataFrame:
     Returns
     -------
     pd.DataFrame
-        Linked, cleaned data ready for analysis.
+        Linked, prepared data ready for direct analysis.
     """
     df = _read_silver(_SILVER_LINKED_KEY)
     return _apply_filters(df, filters)
@@ -125,7 +136,7 @@ def query_silver(
 
     Parameters
     ----------
-    dataset : {"lst", "nida", "linked"}
+    dataset : {"etu", "nida", "linked"}
         Which Silver dataset to load.
     filters : dict, optional
         Column-based equality filters.
@@ -140,7 +151,7 @@ def query_silver(
         If *dataset* is not one of the known names.
     """
     _handlers = {
-        "lst": get_silver_lst,
+        "etu": get_silver_etu,
         "nida": get_silver_nida,
         "linked": get_silver_linked,
     }
@@ -152,7 +163,7 @@ def query_silver(
     return _handlers[dataset](filters=filters)
 
 
-def list_silver_datasets() -> list[str]:
+def list_silver_datasets() -> list:
     """Return the object keys of all available Silver Parquet files."""
     return list_objects(prefix="", bucket=SILVER_BUCKET)
 

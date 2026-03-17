@@ -119,7 +119,7 @@ def write_json(payload: dict, object_key: str, bucket: Optional[str] = None) -> 
         return False
 
 
-def list_objects(prefix: str = "", bucket: Optional[str] = None) -> list[str]:
+def list_objects(prefix: str = "", bucket: Optional[str] = None) -> list:
     """Return a list of object keys in *bucket* matching *prefix*."""
     bucket = bucket or SILVER_BUCKET
     client = get_minio_client()
