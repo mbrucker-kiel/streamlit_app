@@ -1,6 +1,5 @@
 import pandas as pd
 from data_helpers import ja_nein_to_bool
-import data_loading
 
 
 def get_metric_from_results(db, limit=10000):

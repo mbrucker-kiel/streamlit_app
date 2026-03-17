@@ -12,3 +12,5 @@ streamlit-folium
 psycopg2-binary
 Authlib
 geopandas==1.1.2
+boto3
+pyarrow
