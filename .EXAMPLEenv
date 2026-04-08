@@ -9,3 +9,34 @@ NIDA_PROTOCOL_EXAMPLE_URL=""
 DEFAULT_SKTW_VEHICLES=S-KTW1, S-KTW2
 DEFAULT_NIDA_SKTW_VEHICLES=SKTW1, SKTW2
 VEHICLE_CONFIG=vehicle1:168
+
+# ---------------------------------------------------------------------------
+# MinIO / S3-compatible Data Lake (Bronze + Silver layers)
+# ---------------------------------------------------------------------------
+
+# URL of the MinIO instance, e.g. http://localhost:9000
+MINIO_ENDPOINT_URL=http://localhost:9000
+
+# MinIO access credentials (equivalent to AWS_ACCESS_KEY_ID / SECRET)
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+
+# Optional: S3 region reported to MinIO (usually us-east-1 for local MinIO)
+MINIO_REGION=us-east-1
+
+# Bucket names
+MINIO_BRONZE_BUCKET=bronze
+MINIO_SILVER_BUCKET=silver
+
+# Object keys for the raw Bronze Parquet files (written by Airbyte)
+BRONZE_LST_KEY=lst/einsatzdaten.parquet
+BRONZE_NIDA_INDEX_KEY=nida/index.parquet
+BRONZE_NIDA_DETAILS_KEY=nida/details.parquet
+
+# Optional date filter applied by the Silver pipeline
+# (Eckpunktevereinbarung Anlage 5 date range – leave empty to keep all data)
+SILVER_START_DATE=
+SILVER_END_DATE=
+
+# Minimum Splink match_probability to include in the match table (0.0–1.0)
+SILVER_MATCH_THRESHOLD=0.7

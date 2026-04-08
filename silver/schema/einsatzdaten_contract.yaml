@@ -1,0 +1,512 @@
+apiVersion: v3.1.0
+kind: DataContract
+id: einsatzdaten-contract-v1
+name: Einsatzdaten
+version: 1.0.0
+status: active
+description: "Übersicht der Einsatzdaten - Comprehensive Emergency Service Data Contract"
+schema:
+  - name: einsatzdaten
+    logicalType: object
+    physicalType: table
+    properties:
+      - name: EINSATZ_NR
+        logicalType: string
+        physicalType: VARCHAR(50)
+        primaryKey: true
+        tags:
+          - classified
+        description: "Einsatznummer des Einsatzes zur Vollständigkeitsprüfung."
+        examples:
+          - "NK 20120404 123"
+
+      - name: OBER_EINSATZ_NR
+        logicalType: string
+        physicalType: VARCHAR(50)
+        primaryKey: true
+        description: "ID eines möglichen Obereinsatzes."
+        examples:
+          - "1234567"
+
+      - name: AUFTRAGS_NR
+        logicalType: string
+        physicalType: VARCHAR(50)
+        tags:
+          - public
+        description: "Auftragsnummer des Dispolisteneintrages bzw. Patienten."
+        examples:
+          - "123"
+
+      - name: EINSATZBEGINN
+        businessName: GESAMTEINSATZBEGIN
+        logicalType: timestamp
+        physicalType: DATETIME
+        description: "Alarmierungszeitpunkt des ersten Dispolisteneintrages."
+        examples:
+          - "01.01.1970 23:59:59"
+
+      - name: EINSATZENDE
+        businessName: GESAMTEINSATZENDE
+        logicalType: timestamp
+        physicalType: DATETIME
+        description: "Zeitpunkt des Rückkehr des letzten Dispomittels."
+        examples:
+          - "01.01.1970 23:59:59"
+
+      - name: SZENARIO_BEGINN
+        logicalType: string
+        physicalType: VARCHAR(50)
+        tags:
+          - public
+        description: "Vom Disponenten eingegebenes Szenario bei Alarmierung."
+        examples:
+          - "KBF - Krankenbeförderung"
+
+      - name: SZENARIO_ABSCHLUSS
+        logicalType: string
+        physicalType: VARCHAR(50)
+        description: "Szenario bei Fertigstellung des Einsatzes."
+        examples:
+          - "NOTF - Notfalleinsatz"
+
+      - name: CEDUS_CODE
+        logicalType: string
+        physicalType: TEXT
+        tags:
+          - classified
+        description: "Cedus Code des Einsatzes (ALLG_FELD3)."
+        examples:
+          - "600 - Verletzte Person"
+
+      - name: FREITEXT_EREIGNIS
+        logicalType: string
+        physicalType: TEXT
+        tags:
+          - classified
+        description: "Freitext aus dem Feld Ereignis des Einsatzes."
+        examples:
+          - "463 unklare Schmerzen im Thorax"
+
+      - name: EO_LANDKREIS
+        logicalType: string
+        physicalType: VARCHAR(100)
+        tags:
+          - public
+        description: "Kreiszone des Einsatzortes."
+        examples:
+          - "Pinneberg"
+
+      - name: EO_ORT
+        logicalType: string
+        physicalType: VARCHAR(100)
+        tags:
+          - public
+        description: "Einsatzort-Ort des Einsatzes."
+        examples:
+          - "Harrislee"
+
+      - name: EO_ORTSTEIL
+        logicalType: string
+        physicalType: VARCHAR(100)
+        tags:
+          - public
+        description: "Einsatzort-Zone des Einsatzes."
+        examples:
+          - "Harrislee-Harrislee"
+
+      - name: EO_OBJEKT
+        logicalType: string
+        physicalType: VARCHAR(255)
+        tags:
+          - public
+        description: "Einsatzort Objekt (z.B. Krankenhaus)."
+        examples:
+          - "Region Klinik Elmshorn"
+
+      - name: EO_OBJEKT_TYP
+        logicalType: string
+        physicalType: VARCHAR(100)
+        tags:
+          - public
+        description: "Art des Objektes im Leitrechner."
+        examples:
+          - "Arztpraxis"
+
+      - name: EO_ABTEILUNG
+        logicalType: string
+        physicalType: VARCHAR(100)
+        tags:
+          - public
+        description: "Einsatzort Objektabteilungen."
+        examples:
+          - "Station 1"
+
+      - name: EO_IST_KH
+        logicalType: boolean
+        physicalType: TINYINT(1)
+        tags:
+          - public
+        description: "Indikator ob EO_OBJEKT ein Krankenhaus ist."
+        examples:
+          - "1"
+
+      - name: EO_STRASSE
+        logicalType: string
+        physicalType: VARCHAR(255)
+        tags:
+          - public
+        description: "Einsatzort Straße des Einsatzes."
+        examples:
+          - "Am Oxer"
+
+      - name: EO_STRASSE_ZUSATZ
+        logicalType: string
+        physicalType: VARCHAR(255)
+        tags:
+          - classified
+        description: "Hausnummer und Zusatz des Einsatzortes."
+        examples:
+          - "17 MFH 2. OG"
+
+      - name: EO_STRASSENABSCHNITT
+        logicalType: string
+        physicalType: VARCHAR(100)
+        description: "Straßenteil gemäß Einsatzleitrechner."
+        examples:
+          - "Am Oxer 1 - 99"
+
+      - name: EO_X_KOORD
+        logicalType: string
+        physicalType: VARCHAR(50)
+        tags:
+          - classified
+        description: "X Koordinate des Einsatzortes (UTM 32 U)."
+        examples:
+          - "505808,25"
+
+      - name: EO_Y_KOORD
+        logicalType: string
+        physicalType: VARCHAR(50)
+        tags:
+          - classified
+        description: "Y Koordinate des Einsatzortes (UTM 32 U)."
+        examples:
+          - "6005307,17"
+
+      - name: ZO_LANDKREIS
+        logicalType: string
+        physicalType: VARCHAR(100)
+        tags:
+          - public
+        description: "Kreiszone des Zielortes."
+        examples:
+          - "Pinneberg"
+
+      - name: ZO_ORT
+        logicalType: string
+        physicalType: VARCHAR(100)
+        tags:
+          - public
+        description: "Zielort Ort des Einsatzes."
+        examples:
+          - "Elmshorn"
+
+      - name: ZO_ORTSTEIL
+        logicalType: string
+        physicalType: VARCHAR(100)
+        tags:
+          - public
+        description: "Zielort Zone des Einsatzes."
+        examples:
+          - "Elmshorn-E-Süd"
+
+      - name: ZO_OBJEKT
+        logicalType: string
+        physicalType: VARCHAR(255)
+        tags:
+          - public
+        description: "Zielort Objekt mit Berücksichtigung von Krankenhäuser."
+        examples:
+          - "Krankenhaus Niebüll"
+
+      - name: ZO_OBJEKT_TYP
+        logicalType: string
+        physicalType: VARCHAR(100)
+        tags:
+          - public
+        description: "Art des Zielobjektes."
+        examples:
+          - "KRANKENHAUS"
+
+      - name: ZO_ABTEILUNG
+        logicalType: string
+        physicalType: VARCHAR(100)
+        tags:
+          - public
+        description: "Zielort Objektabteilung."
+        examples:
+          - "Station 1"
+
+      - name: ZO_IST_KH
+        logicalType: boolean
+        physicalType: TINYINT(1)
+        tags:
+          - public
+        description: "Indikator ob Zielort ein Krankenhaus ist."
+        examples:
+          - "1"
+
+      - name: ZO_STRASSE
+        logicalType: string
+        physicalType: VARCHAR(255)
+        tags:
+          - public
+        description: "Zielort Straße des Einsatzes."
+        examples:
+          - "Agnes-Karll-Allee"
+
+      - name: ZO_STRASSE_ZUSATZ
+        logicalType: string
+        physicalType: VARCHAR(255)
+        tags:
+          - classified
+        description: "Hausnummer und Zusatz des Zielortes."
+        examples:
+          - "17 MFH 2. OG"
+
+      - name: ZO_STRASSENABSCHNITT
+        logicalType: string
+        physicalType: VARCHAR(100)
+        tags:
+          - public
+        description: "Zielort Straßenteil."
+        examples:
+          - "Am Oxer 1 - 99"
+
+      - name: ZO_X_KOORD
+        logicalType: string
+        physicalType: VARCHAR(50)
+        tags:
+          - classified
+        description: "X Koordinate des Zielortes (UTM 32 U)."
+        examples:
+          - "489990,977"
+
+      - name: ZO_Y_KOORD
+        logicalType: string
+        physicalType: VARCHAR(50)
+        tags:
+          - classified
+        description: "Y Koordinate des Zielortes (UTM 32 U)."
+        examples:
+          - "6071764,085"
+
+      - name: DISPO_TYP
+        logicalType: string
+        physicalType: VARCHAR(50)
+        description: "Typ: Einsatzmittel (E), Dienststelle (D), Mannschaft (M), Person (P)."
+        examples:
+          - "E"
+
+      - name: EINSATZMITTEL
+        logicalType: string
+        physicalType: VARCHAR(100)
+        primaryKey: true
+        tags:
+          - public
+        description: "Name des Einsatzmittels aus der Dispoliste."
+        examples:
+          - "Rettung Pinneberg 10/83/3"
+
+      - name: EINSATZMITTELTYP
+        logicalType: string
+        physicalType: VARCHAR(100)
+        description: "Typ des Einsatzmittels."
+        examples:
+          - "Rettungswagen (RTW)"
+
+      - name: EINSATZMITTEL_WACHE
+        logicalType: string
+        physicalType: VARCHAR(100)
+        description: "Wachenname zum Zeitpunkt der Disposition."
+        examples:
+          - "Rettungswache Brunsbüttel (NEF)"
+
+      - name: EINSATZANNAHME
+        logicalType: timestamp
+        physicalType: DATETIME
+        primaryKey: true
+        tags:
+          - public
+        description: "Erzeugungsdatum des Einsatzes."
+        examples:
+          - "01.01.1970 23:59:59"
+
+      - name: ZEIT_DISPO_1_PLAN
+        logicalType: timestamp
+        physicalType: DATETIME
+        description: "Plandatum des Einsatzes (Plantermin1)."
+        examples:
+          - "01.01.1970 23:59:59"
+
+      - name: ZEIT_DISPO_2_DISPO
+        logicalType: timestamp
+        physicalType: DATETIME
+        description: "Dispositionszeit des Einsatzmittels."
+        examples:
+          - "01.01.1970 23:59:59"
+
+      - name: ALARMIERT
+        logicalType: timestamp
+        physicalType: DATETIME
+        tags:
+          - public
+        description: "Zeitstempel der ersten Alarmierung."
+        examples:
+          - "01.01.1970 23:59:59"
+
+      - name: SOSI
+        logicalType: boolean
+        physicalType: TINYINT(1)
+        tags:
+          - public
+        description: "Status des Sondersignals bei Status 3 des EM."
+        examples:
+          - "1"
+
+      - name: INFEKTIONSFAHRT
+        logicalType: boolean
+        physicalType: TINYINT(1)
+        tags:
+          - public
+        description: "Indikator für Infektionsfahrt (Feld PAT_INFEKTIOES)."
+        examples:
+          - "0"
+
+      - name: TRANSPORTART
+        logicalType: string
+        physicalType: VARCHAR(50)
+        description: "Abrechnungsqualität (NA, NF, NFK, KT)."
+        examples:
+          - "NF"
+
+      - name: STATUS_BEI_ALARMIERUNG
+        logicalType: string
+        physicalType: VARCHAR(50)
+        description: "Status des Einsatzmittels zum Alarmzeitpunkt."
+        examples:
+          - "Auf Wache"
+
+      - name: ALARMIERT_ORT_GPS_X
+        logicalType: string
+        physicalType: VARCHAR(50)
+        description: "X-Koordinaten bei erster Alarmierung (UTM 32)."
+        examples:
+          - "505808,25"
+
+      - name: ALARMIERT_ORT_GPS_Y
+        logicalType: string
+        physicalType: VARCHAR(50)
+        description: "Y-Koordinaten bei erster Alarmierung (UTM 32)."
+        examples:
+          - "6005307,17"
+
+      - name: ZEIT_AB_D_1
+        logicalType: timestamp
+        physicalType: DATETIME
+        tags:
+          - public
+        description: "Status 3 Zeitstempel (Abfahrt)."
+        examples:
+          - "01.01.1970 23:59:59"
+
+      - name: ZEIT_AB_D_1_URSPRUNG
+        logicalType: string
+        physicalType: VARCHAR(50)
+        description: "Quelle des Status (Disponent oder Einsatzmittel)."
+        examples:
+          - "E"
+
+      - name: ZEIT_AN_E
+        logicalType: timestamp
+        physicalType: DATETIME
+        tags:
+          - public
+        description: "Status 4 Zeitstempel (Ankunft Einsatzort)."
+        examples:
+          - "01.01.1970 23:59:59"
+
+      - name: SOSI_ZO
+        logicalType: boolean
+        physicalType: TINYINT(1)
+        tags:
+          - public
+        description: "Sondersignal zum Zielort (Status 8)."
+        examples:
+          - "1"
+
+      - name: ZEIT_AN_Z
+        logicalType: timestamp
+        physicalType: DATETIME
+        tags:
+          - public
+        description: "Status 8 Zeitstempel (Ankunft Zielort)."
+        examples:
+          - "01.01.1970 23:59:59"
+
+      - name: ZEIT_AB_Z
+        logicalType: timestamp
+        physicalType: DATETIME
+        tags:
+          - public
+        description: "Status 1 Zeitstempel (Abfahrt Zielort)."
+        examples:
+          - "01.01.1970 23:59:59"
+
+      - name: ZEIT_AN_D
+        logicalType: timestamp
+        physicalType: DATETIME
+        tags:
+          - public
+        description: "Status 2 Zeitstempel (Ankunft Dienststelle)."
+        examples:
+          - "01.01.1970 23:59:59"
+
+      - name: ZEIT_EINSATZENDE
+        logicalType: timestamp
+        physicalType: DATETIME
+        tags:
+          - public
+        description: "Abschlusszeitstempel des Einsatzmittels."
+        examples:
+          - "01.01.1970 23:59:59"
+
+      - name: PAT_ALTER
+        logicalType: string
+        physicalType: VARCHAR(10)
+        description: "Alter des Patienten."
+        examples:
+          - "27"
+
+      - name: PAT_GESCHLECHT
+        logicalType: string
+        physicalType: VARCHAR(10)
+        description: "Geschlecht des Patienten (M/W/D)."
+        examples:
+          - "M"
+
+      - name: EINSATZSTATUS
+        logicalType: string
+        physicalType: VARCHAR(50)
+        description: "Status (z.B. Storniert oder Fertig)."
+        examples:
+          - "Storniert"
+
+      - name: STORNO_GRUND
+        logicalType: string
+        physicalType: TEXT
+        tags:
+          - public
+        description: "Grund für die Stornierung des Einsatzes."
+        examples:
+          - "Notrufmissbrauch"
